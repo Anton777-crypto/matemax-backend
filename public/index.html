@@ -1,0 +1,3992 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>МатеМакс — Онлайн школа математики</title>
+<style>
+:root{
+  --primary:#5B4FD9;
+  --primary-dark:#4A3FC0;
+  --primary-light:#EDE9FF;
+  --accent:#22C98E;
+  --accent-dark:#1AAE78;
+  --accent-light:#E3FBF1;
+  --danger:#E84855;
+  --warning:#F5A623;
+  --bg:#F6F7FB;
+  --card:#FFFFFF;
+  --text:#2B2A4C;
+  --text-light:#6E6E8F;
+  --border:#E6E6F0;
+  --shadow: 0 4px 18px rgba(91,79,217,0.08);
+  --shadow-lg: 0 10px 36px rgba(91,79,217,0.16);
+  --radius:16px;
+  --radius-sm:10px;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;}
+input,select,textarea{font-family:inherit;outline:none;}
+ul{list-style:none;}
+img{max-width:100%;display:block;}
+
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#D6D6F0;border-radius:10px;}
+::-webkit-scrollbar-thumb:hover{background:var(--primary);}
+
+.hidden{display:none !important;}
+
+/* ===== BUTTONS ===== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 22px;border-radius:12px;font-weight:600;font-size:15px;
+  transition:all .15s ease; white-space:nowrap;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:var(--shadow-lg);}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent:hover{background:var(--accent-dark);transform:translateY(-1px);}
+.btn-outline{background:#fff;color:var(--primary);border:2px solid var(--primary);}
+.btn-outline:hover{background:var(--primary-light);}
+.btn-ghost{background:transparent;color:var(--text-light);}
+.btn-ghost:hover{background:var(--bg);color:var(--text);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{opacity:.88;}
+.btn-sm{padding:8px 14px;font-size:13px;border-radius:9px;}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none !important;}
+
+/* ===== CARD ===== */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:24px;
+  border:1px solid var(--border);
+}
+.card-hover{transition:transform .15s ease, box-shadow .15s ease;}
+.card-hover:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:99px;font-size:12px;font-weight:700;
+  background:var(--primary-light);color:var(--primary);
+}
+.badge-accent{background:var(--accent-light);color:var(--accent-dark);}
+.badge-warn{background:#FFF3E0;color:var(--warning);}
+.badge-danger{background:#FFEAEC;color:var(--danger);}
+
+/* ===== LAYOUT ===== */
+.app-shell{display:flex;min-height:100vh;}
+.sidebar{
+  width:264px;flex-shrink:0;background:linear-gradient(180deg,#fff 0%,#FBFAFF 100%);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;z-index:50;
+  transition:transform .25s ease;
+}
+.sidebar-brand{
+  display:flex;align-items:center;gap:10px;padding:22px 22px 18px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-brand .logo-mark{
+  width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(135deg,var(--primary),var(--accent));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;
+  flex-shrink:0;
+}
+.sidebar-brand .brand-text strong{display:block;font-size:18px;font-weight:800;color:var(--text);}
+.sidebar-brand .brand-text span{font-size:11px;color:var(--text-light);}
+
+.sidebar-user{
+  margin:16px 18px;padding:14px;border-radius:14px;background:var(--primary-light);
+  display:flex;align-items:center;gap:10px;
+}
+.sidebar-user .avatar{
+  width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;
+}
+.sidebar-user .uinfo{overflow:hidden;}
+.sidebar-user .uinfo strong{display:block;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sidebar-user .uinfo span{font-size:11.5px;color:var(--text-light);}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:6px 14px;}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+  font-size:14.5px;font-weight:600;color:var(--text-light);margin-bottom:4px;
+  transition:all .15s ease; cursor:pointer;
+}
+.nav-item .nav-ico{font-size:18px;width:22px;text-align:center;}
+.nav-item:hover{background:var(--bg);color:var(--text);}
+.nav-item.active{background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(91,79,217,.3);}
+
+.sidebar-foot{padding:14px 18px 20px;border-top:1px solid var(--border);}
+
+.main-area{flex:1;margin-left:264px;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px;background:#fff;border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:30;
+}
+.topbar h1{font-size:21px;font-weight:800;}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.menu-toggle{display:none;background:var(--bg);width:40px;height:40px;border-radius:10px;font-size:18px;align-items:center;justify-content:center;}
+
+.page-content{padding:28px 32px 60px;flex:1;}
+.page-section{display:none;}
+.page-section.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+.grid{display:grid;gap:18px;}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+.section-title{font-size:19px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.muted{color:var(--text-light);font-size:13.5px;}
+
+/* ===== TABLE ===== */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;background:#fff;}
+th,td{padding:13px 16px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--border);}
+th{background:var(--bg);font-weight:700;color:var(--text-light);text-transform:uppercase;font-size:11.5px;letter-spacing:.4px;}
+tr:hover td{background:#FBFAFF;}
+
+/* ===== FORM ===== */
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:13.5px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.field input,.field select,.field textarea{
+  width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14.5px;
+  transition:border .15s ease;background:#fff;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);}
+.field textarea{resize:vertical;min-height:90px;}
+.field .hint{font-size:12px;color:var(--text-light);margin-top:5px;}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(43,42,76,.55);backdrop-filter:blur(2px);
+  display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;
+  animation:fadeIn .15s ease;
+}
+.modal-box{
+  background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;
+  box-shadow:var(--shadow-lg);animation:popIn .2s ease;
+}
+@keyframes popIn{from{transform:scale(.92);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-box.wide{max-width:760px;}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;padding:20px 24px;
+  border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;
+}
+.modal-head h3{font-size:18px;font-weight:800;}
+.modal-close{width:32px;height:32px;border-radius:50%;background:var(--bg);font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text-light);}
+.modal-close:hover{background:#FFEAEC;color:var(--danger);}
+.modal-body{padding:22px 24px;}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+
+/* ===== TOAST ===== */
+#toastBox{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:10px;}
+.toast{
+  background:#2B2A4C;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:600;
+  box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:240px;
+  animation:slideIn .25s ease;
+}
+.toast.success{background:var(--accent-dark);}
+.toast.error{background:var(--danger);}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+/* ===== AUTH ===== */
+.auth-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#5B4FD9 0%, #7B6FF0 45%, #22C98E 100%);
+  padding:20px;
+}
+.auth-box{background:#fff;border-radius:22px;max-width:430px;width:100%;padding:36px 32px;box-shadow:0 24px 60px rgba(0,0,0,.25);}
+.auth-logo{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:22px;}
+.auth-logo .logo-mark{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:800;}
+.auth-logo strong{font-size:24px;font-weight:800;}
+.auth-tabs{display:flex;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:22px;}
+.auth-tab{flex:1;text-align:center;padding:10px;border-radius:9px;font-weight:700;font-size:13.5px;color:var(--text-light);}
+.auth-tab.active{background:#fff;color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.role-pick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+.role-pick-item{
+  border:2px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;font-size:13px;font-weight:700;
+  color:var(--text-light);transition:all .15s ease;
+}
+.role-pick-item .ric{font-size:24px;display:block;margin-bottom:4px;}
+.role-pick-item.active{border-color:var(--primary);color:var(--primary);background:var(--primary-light);}
+.auth-foot-link{text-align:center;font-size:13.5px;color:var(--text-light);margin-top:14px;}
+.auth-foot-link b{color:var(--primary);cursor:pointer;}
+.demo-box{background:var(--accent-light);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--accent-dark);margin-top:16px;line-height:1.6;}
+
+.otp-inputs{display:flex;gap:8px;justify-content:center;margin:18px 0;}
+.otp-inputs input{
+  width:46px;height:54px;text-align:center;font-size:22px;font-weight:800;
+  border:2px solid var(--border);border-radius:10px;
+}
+.otp-inputs input:focus{border-color:var(--primary);}
+
+/* ===== GAMES HUB ===== */
+.game-filterbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.chip{
+  padding:9px 18px;border-radius:99px;background:#fff;border:1.5px solid var(--border);
+  font-size:13.5px;font-weight:700;color:var(--text-light);
+}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.topic-banner{
+  border-radius:18px;padding:20px 24px;margin-bottom:18px;color:#fff;display:flex;align-items:center;gap:16px;
+}
+.topic-banner .ti{font-size:36px;}
+.topic-banner h2{font-size:19px;font-weight:800;}
+.topic-banner p{font-size:13px;opacity:.9;}
+.game-card{
+  background:#fff;border-radius:16px;padding:18px;border:1px solid var(--border);cursor:pointer;
+  transition:all .15s ease;position:relative;
+}
+.game-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--primary);}
+.game-card .gi{font-size:30px;margin-bottom:10px;}
+.game-card h4{font-size:14.5px;font-weight:700;margin-bottom:6px;line-height:1.3;}
+.game-card .gmeta{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ===== GAME PLAYER ===== */
+.game-player-overlay{
+  position:fixed;inset:0;background:linear-gradient(160deg,#5B4FD9,#3B2FA0);z-index:1500;
+  display:flex;flex-direction:column;
+}
+.gp-top{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;color:#fff;}
+.gp-top .gp-info{display:flex;align-items:center;gap:14px;}
+.gp-close{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;}
+.gp-close:hover{background:rgba(255,255,255,.3);}
+.gp-stats{display:flex;gap:18px;color:#fff;font-weight:700;font-size:14px;}
+.gp-progressbar{height:8px;background:rgba(255,255,255,.25);border-radius:99px;margin:0 24px;overflow:hidden;}
+.gp-progressbar-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s ease;}
+.gp-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+.gp-card{background:#fff;border-radius:24px;padding:36px;max-width:680px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.gp-question{font-size:22px;font-weight:800;text-align:center;margin-bottom:26px;line-height:1.4;}
+.gp-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:560px){.gp-options{grid-template-columns:1fr;}}
+.gp-opt{
+  padding:18px;border-radius:14px;border:2.5px solid var(--border);font-size:18px;font-weight:700;
+  background:#fff;text-align:center;transition:all .12s ease;
+}
+.gp-opt:hover{border-color:var(--primary);background:var(--primary-light);}
+.gp-opt.correct{border-color:var(--accent);background:var(--accent-light);color:var(--accent-dark);}
+.gp-opt.wrong{border-color:var(--danger);background:#FFEAEC;color:var(--danger);}
+.gp-opt:disabled{pointer-events:none;}
+.gp-feedback{text-align:center;margin-top:18px;font-size:16px;font-weight:700;min-height:24px;}
+.gp-feedback.ok{color:var(--accent-dark);}
+.gp-feedback.bad{color:var(--danger);}
+.gp-nextbtn{display:block;margin:20px auto 0;}
+.gp-input-row{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;}
+.gp-input-row input{
+  width:140px;padding:14px;font-size:20px;text-align:center;border:2.5px solid var(--border);border-radius:12px;font-weight:700;
+}
+.gp-input-row input:focus{border-color:var(--primary);}
+.flashcard-wrap{perspective:1000px;width:320px;height:220px;margin:0 auto;}
+.flashcard-inner{width:100%;height:100%;position:relative;transition:transform .5s;transform-style:preserve-3d;cursor:pointer;}
+.flashcard-inner.flipped{transform:rotateY(180deg);}
+.flashcard-face{
+  position:absolute;inset:0;backface-visibility:hidden;border-radius:18px;
+  display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);
+}
+.flashcard-front{background:linear-gradient(135deg,var(--primary),#7B6FF0);color:#fff;}
+.flashcard-back{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;transform:rotateY(180deg);}
+.gp-pairs{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.pair-col{display:flex;flex-direction:column;gap:10px;}
+.pair-item{padding:14px;border-radius:12px;border:2.5px solid var(--border);font-weight:700;text-align:center;font-size:16px;background:#fff;}
+.pair-item.selected{border-color:var(--primary);background:var(--primary-light);}
+.pair-item.matched{border-color:var(--accent);background:var(--accent-light);color:var(--accent-dark);opacity:.7;pointer-events:none;}
+.sort-groups{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+.sort-zone{min-height:120px;border:2.5px dashed var(--border);border-radius:14px;padding:12px;}
+.sort-zone h5{text-align:center;font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-light);}
+.sort-zone-items{display:flex;flex-wrap:wrap;gap:8px;min-height:40px;}
+.sort-pool{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:14px;background:var(--bg);border-radius:14px;}
+.drag-chip{
+  padding:9px 16px;border-radius:10px;background:#fff;border:2px solid var(--primary);color:var(--primary);
+  font-weight:700;cursor:grab;font-size:15px;
+}
+.drag-chip.placed{cursor:default;}
+.seq-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:18px;}
+.seq-chip{
+  padding:14px 18px;border-radius:12px;background:#fff;border:2.5px solid var(--primary);color:var(--primary);
+  font-weight:800;font-size:18px;cursor:pointer;
+}
+.seq-chip.picked{background:var(--primary);color:#fff;}
+.seq-slots{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.seq-slot{
+  width:54px;height:54px;border-radius:12px;border:2.5px dashed var(--border);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:18px;color:var(--text-light);
+}
+.seq-slot.filled{border-style:solid;border-color:var(--accent);color:var(--accent-dark);background:var(--accent-light);}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;font-size:34px;margin-bottom:22px;max-width:480px;margin-left:auto;margin-right:auto;}
+.balloon-field{position:relative;height:340px;}
+.balloon{
+  position:absolute;bottom:0;width:84px;height:104px;border-radius:50% 50% 50% 50%/55% 55% 45% 45%;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;
+  cursor:pointer;animation:floatUp linear forwards;box-shadow:inset -8px -8px 16px rgba(0,0,0,.1);
+}
+@keyframes floatUp{from{bottom:-120px;}to{bottom:380px;}}
+.numline-wrap{padding:20px 10px;}
+.gp-compare-row{display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:24px;}
+.gp-compare-num{font-size:40px;font-weight:800;background:var(--primary-light);padding:16px 28px;border-radius:16px;color:var(--primary);}
+.gp-compare-opts{display:flex;gap:14px;justify-content:center;}
+.gp-compare-opts .gp-opt{width:80px;font-size:28px;}
+.timer-bar-wrap{height:10px;background:var(--bg);border-radius:99px;margin-bottom:20px;overflow:hidden;}
+.timer-bar-fill{height:100%;background:var(--warning);border-radius:99px;transition:width .1s linear;}
+.gp-result-screen{text-align:center;}
+.gp-result-screen .rstar{font-size:64px;margin-bottom:10px;}
+.gp-result-screen h2{font-size:26px;font-weight:800;margin-bottom:6px;}
+.gp-result-stats{display:flex;gap:14px;justify-content:center;margin:22px 0;}
+.gp-result-stat{background:var(--bg);border-radius:14px;padding:16px 22px;}
+.gp-result-stat b{display:block;font-size:24px;color:var(--primary);}
+.gp-result-stat span{font-size:12px;color:var(--text-light);}
+
+/* ===== SCHEDULE ===== */
+.sched-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+@media(max-width:900px){.sched-grid{grid-template-columns:1fr;}}
+.sched-day{background:#fff;border-radius:14px;padding:12px;border:1px solid var(--border);min-height:140px;}
+.sched-day h5{font-size:12.5px;font-weight:800;text-transform:uppercase;color:var(--text-light);margin-bottom:10px;text-align:center;}
+.sched-lesson{
+  background:var(--primary-light);border-radius:10px;padding:9px 10px;margin-bottom:8px;font-size:12px;color:var(--primary);
+  border-left:3px solid var(--primary);
+}
+.sched-lesson b{display:block;font-size:12.5px;}
+.sched-lesson.done{background:var(--accent-light);border-color:var(--accent);color:var(--accent-dark);}
+
+/* ===== PRICING ===== */
+.price-card{background:#fff;border-radius:18px;padding:22px;border:2px solid var(--border);text-align:center;position:relative;}
+.price-card.popular{border-color:var(--accent);}
+.price-card .pop-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:99px;}
+.price-card .pname{font-weight:700;font-size:14px;color:var(--text-light);margin-bottom:8px;}
+.price-card .pval{font-size:30px;font-weight:800;color:var(--primary);margin-bottom:4px;}
+.price-card .pper{font-size:12px;color:var(--text-light);margin-bottom:16px;}
+
+/* ===== MISC ===== */
+.stat-card{display:flex;align-items:center;gap:14px;}
+.stat-card .stat-ico{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.stat-card .stat-val{font-size:24px;font-weight:800;}
+.stat-card .stat-lbl{font-size:12.5px;color:var(--text-light);}
+.progress-track{height:9px;background:var(--bg);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:99px;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-light);}
+.empty-state .ei{font-size:46px;margin-bottom:12px;}
+.recorder-box{border:2px dashed var(--border);border-radius:14px;padding:18px;text-align:center;}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hw-card{border-left:4px solid var(--primary);}
+.hw-card.done{border-left-color:var(--accent);}
+.audio-player{width:100%;margin-top:10px;}
+
+@media(max-width:920px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main-area{margin-left:0;}
+  .menu-toggle{display:flex;}
+  .grid-2{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div id="toastBox"></div>
+<div id="appRoot"></div>
+
+<script>
+/* =========================================================================
+   МАТЕМАКС — API LAYER
+   Підключення до Node.js бекенду
+   Якщо бекенд недоступний — автоматично падає на in-memory (demo режим)
+   ========================================================================= */
+
+const API_URL = (() => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001/api';
+  }
+  return window.location.origin + '/api';
+})();
+let API_MODE = false; // true = бекенд активний, false = in-memory demo
+
+// ── Токен сесії ─────────────────────────────────────────────
+const TokenStore = {
+  get: () => localStorage.getItem('matemax_token'),
+  set: (t) => localStorage.setItem('matemax_token', t),
+  clear: () => localStorage.removeItem('matemax_token'),
+};
+
+// ── Базовий fetch з авторизацією ────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const token = TokenStore.get();
+  const res = await fetch(API_URL + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(opts.headers || {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.error || 'API Error'), { status: res.status, data });
+  return data;
+}
+
+// ── Перевірка чи бекенд живий ────────────────────────────────
+async function checkBackend() {
+  try {
+    const r = await fetch(API_URL.replace('/api', '') + '/health', { signal: AbortSignal.timeout(2000) });
+    if (r.ok) { API_MODE = true; console.log('✅ Бекенд підключено:', API_URL); }
+  } catch {
+    console.warn('⚠️ Бекенд недоступний — режим демо (in-memory)');
+    API_MODE = false;
+  }
+}
+
+// ── API-обгортки ─────────────────────────────────────────────
+const API = {
+  // Auth
+  async login(email, password) {
+    const d = await apiFetch('/auth/login', { method: 'POST', body: { email, password } });
+    TokenStore.set(d.token);
+    return d.user;
+  },
+  async register(payload) {
+    return apiFetch('/auth/register', { method: 'POST', body: payload });
+  },
+  async verifyEmail(token) {
+    const d = await apiFetch('/auth/verify/' + token);
+    TokenStore.set(d.token);
+    return d.user;
+  },
+  async me() {
+    const d = await apiFetch('/auth/me');
+    return d.user;
+  },
+  async forgotPassword(email) {
+    return apiFetch('/auth/forgot-password', { method: 'POST', body: { email } });
+  },
+  async resetPassword(token, password) {
+    return apiFetch('/auth/reset-password', { method: 'POST', body: { token, password } });
+  },
+  async changePassword(currentPassword, newPassword) {
+    return apiFetch('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+  },
+
+  // Users
+  async getUsers(role) {
+    return apiFetch('/users' + (role ? '?role=' + role : ''));
+  },
+  async getUser(id) {
+    const d = await apiFetch('/users/' + id);
+    return d.user;
+  },
+  async adminCreate(payload) {
+    return apiFetch('/users/admin-create', { method: 'POST', body: payload });
+  },
+  async updateUser(id, payload) {
+    const d = await apiFetch('/users/' + id, { method: 'PATCH', body: payload });
+    return d.user;
+  },
+  async deleteUser(id) {
+    return apiFetch('/users/' + id, { method: 'DELETE' });
+  },
+  async adminResetPassword(userId, newPassword) {
+    return apiFetch('/users/admin-reset-password', { method: 'POST', body: { userId, newPassword } });
+  },
+
+  // Lessons
+  async getLessons(params = {}) {
+    const q = new URLSearchParams(params).toString();
+    const d = await apiFetch('/lessons' + (q ? '?' + q : ''));
+    return d.lessons;
+  },
+  async createLesson(payload) {
+    const d = await apiFetch('/lessons', { method: 'POST', body: payload });
+    return d.lesson;
+  },
+  async updateLesson(id, payload) {
+    const d = await apiFetch('/lessons/' + id, { method: 'PATCH', body: payload });
+    return d.lesson;
+  },
+  async deleteLesson(id) {
+    return apiFetch('/lessons/' + id, { method: 'DELETE' });
+  },
+
+  // Homework
+  async getHomework(params = {}) {
+    const q = new URLSearchParams(params).toString();
+    const d = await apiFetch('/homework' + (q ? '?' + q : ''));
+    return d.homework;
+  },
+  async createHomework(payload) {
+    const d = await apiFetch('/homework', { method: 'POST', body: payload });
+    return d.homework;
+  },
+  async updateHomework(id, payload) {
+    const d = await apiFetch('/homework/' + id, { method: 'PATCH', body: payload });
+    return d.homework;
+  },
+  async deleteHomework(id) {
+    return apiFetch('/homework/' + id, { method: 'DELETE' });
+  },
+
+  // Materials
+  async getMaterials() {
+    const d = await apiFetch('/materials');
+    return d.materials;
+  },
+  async createMaterial(payload) {
+    const d = await apiFetch('/materials', { method: 'POST', body: payload });
+    return d.material;
+  },
+  async deleteMaterial(id) {
+    return apiFetch('/materials/' + id, { method: 'DELETE' });
+  },
+
+  // Payments
+  async getPayments() {
+    const d = await apiFetch('/payments');
+    return d.payments;
+  },
+  async createPayment(payload) {
+    const d = await apiFetch('/payments', { method: 'POST', body: payload });
+    return d.payment;
+  },
+  async updatePayment(id, status) {
+    const d = await apiFetch('/payments/' + id, { method: 'PATCH', body: { status } });
+    return d.payment;
+  },
+
+  // Payouts
+  async getPayouts() {
+    const d = await apiFetch('/payouts');
+    return d.payouts;
+  },
+  async createPayout(payload) {
+    const d = await apiFetch('/payouts', { method: 'POST', body: payload });
+    return d.payout;
+  },
+
+  // Messages
+  async getConversations() {
+    const d = await apiFetch('/messages/conversations');
+    return d.conversations;
+  },
+  async getMessages(otherId) {
+    const d = await apiFetch('/messages/' + otherId);
+    return d.messages;
+  },
+  async sendMessage(toId, text) {
+    const d = await apiFetch('/messages', { method: 'POST', body: { toId, text } });
+    return d.message;
+  },
+
+  // Notifications
+  async getNotifications() {
+    const d = await apiFetch('/notifications');
+    return d.notifications;
+  },
+  async markNotificationsRead() {
+    return apiFetch('/notifications/read-all', { method: 'PATCH' });
+  },
+
+  // Games
+  async getGameProgress(studentId) {
+    return apiFetch('/games/progress' + (studentId ? '?studentId=' + studentId : ''));
+  },
+  async saveGameProgress(gameId, score) {
+    return apiFetch('/games/progress', { method: 'POST', body: { gameId, score } });
+  },
+};
+
+// ── Перехоплення URL-параметрів для verify/reset ─────────────
+function checkUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const verifyToken = params.get('verify');
+  const resetToken = params.get('reset');
+  if (verifyToken) {
+    history.replaceState(null, '', location.pathname);
+    return { type: 'verify', token: verifyToken };
+  }
+  if (resetToken) {
+    history.replaceState(null, '', location.pathname);
+    return { type: 'reset', token: resetToken };
+  }
+  return null;
+}
+
+/* =========================================================================
+   МАТЕМАКС — Платформа онлайн-школи математики
+   Vanilla JS SPA, дані in-memory (DB)
+   ========================================================================= */
+
+/* ---------------------------- DATABASE ---------------------------- */
+const DB = {
+  nextId: 1000,
+  genId(){ return 'id' + (this.nextId++); },
+
+  // Платформа стартує "чисто": єдиний адміністратор-засновник.
+  // Реєстрація ролі "адмін" через форму закрита — більше адмінів додати не можна.
+  users: [
+    {id:'u_admin1', role:'admin', name:'Адміністратор школи', email:'admin@matemax.ua', password:'Admin2026!', emailVerified:true},
+  ],
+
+  lessons: [],
+  materials: [],
+  homework: [],
+  payments: [],
+
+  gameProgress: {}, // studentId -> {gameId: {bestScore, plays, lastPlayed}}
+
+  // Повідомлення (чат): {id, fromId, toId, text, date, read}
+  messages: [],
+
+  // Сповіщення для вчителя/учня: {id, userId, text, date, read, type}
+  notifications: [],
+
+  // ====================================================================
+  // РЕКВІЗИТИ ШКОЛИ ДЛЯ ОПЛАТИ — ЗАМІНІТЬ НА ВЛАСНІ РЕАЛЬНІ ДАНІ
+  // Усі поля нижче, що починаються з "ЗАМІНІТЬ_НА_", є заглушками.
+  // ====================================================================
+  paymentInfo: {
+    bankName: 'ЗАМІНІТЬ_НА_НАЗВУ_БАНКУ',          // напр. 'Banca Transilvania' або 'BCR'
+    iban: 'RO00 XXXX 0000 0000 0000 0000',          // ваш реальний румунський IBAN (формат RO)
+    swift: 'ЗАМІНІТЬ_НА_SWIFT_BIC',                 // напр. 'BTRLRO22' — обов'язково для переказів з-за кордону (з України)
+    accountCurrency: 'EUR',                          // валюта рахунку: 'EUR' або 'RON'
+    edrpou: 'ЗАМІНІТЬ_НА_CUI_АБО_ЄДРПОУ',           // код компанії/ФОП (CUI — якщо SRL/PFA в Румунії)
+    recipient: 'ЗАМІНІТЬ_НА_ПОВНУ_НАЗВУ_ОТРИМУВАЧА', // напр. 'MATEMAX SRL' або ПІБ
+    cardNumber: 'ЗАМІНІТЬ_НА_НОМЕР_КАРТКИ',         // якщо приймаєте картку — номер з пробілами
+    paypalEmail: 'ЗАМІНІТЬ_НА_PAYPAL_EMAIL',        // email вашого PayPal-акаунту
+    // Орієнтовний курс для показу суми в EUR поряд з грн (онови вручну за потреби)
+    uahToEurRate: 45.0,  // 1 EUR ≈ 45 грн — ЗАМІНІТЬ на актуальний курс
+  },
+
+  // Токени для верифікації email при реєстрації: {token: registrationPayload}
+  pendingVerifications: {},
+};
+/* ---------------------------- STATE ---------------------------- */
+const STATE = {
+  currentUser: null,
+  currentPage: 'home',
+  authMode: 'login', // login | register
+  authRole: 'student',
+  gameFilter: { topic: null, grade: null },
+  activeGameSession: null,
+  adminViewingStudent: null, // studentId — для перегляду кабінету учня адміном
+};
+
+/* ---------------------------- UTILS ---------------------------- */
+function $(sel, root=document){ return root.querySelector(sel); }
+function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtMoney(n){ return n.toLocaleString('uk-UA') + ' грн'; }
+function fmtDate(d){
+  const dt = new Date(d);
+  return dt.toLocaleDateString('uk-UA', {day:'numeric', month:'long'});
+}
+function weekdayShort(d){
+  return new Date(d).toLocaleDateString('uk-UA', {weekday:'short'});
+}
+function uid(){ return DB.genId(); }
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function pick(arr){ return arr[rnd(0,arr.length-1)]; }
+
+function toast(msg, type='info'){
+  const box = $('#toastBox');
+  const t = el(`<div class="toast ${type==='success'?'success':type==='error'?'error':''}">
+    <span>${type==='success'?'✅':type==='error'?'⚠️':'ℹ️'}</span><span>${esc(msg)}</span>
+  </div>`);
+  box.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(40px)'; t.style.transition='all .25s ease'; setTimeout(()=>t.remove(),250); }, 3200);
+}
+
+function openModal(html, opts={}){
+  closeModal();
+  const overlay = el(`<div class="modal-overlay" id="activeModalOverlay"></div>`);
+  overlay.appendChild(el(html));
+  document.body.appendChild(overlay);
+  if(!opts.persistent){
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+  }
+  return overlay;
+}
+function closeModal(){
+  const m = $('#activeModalOverlay');
+  if(m) m.remove();
+}
+
+function getStudentsOf(teacherId){
+  return DB.users.filter(u=>u.role==='student' && u.teacherId===teacherId);
+}
+function getUserById(id){ return DB.users.find(u=>u.id===id); }
+function getChildrenOf(parentId){
+  const p = getUserById(parentId);
+  if(!p) return [];
+  return (p.children||[]).map(getUserById).filter(Boolean);
+}
+
+/* ---------------------------- AUTH ---------------------------- */
+const ROLE_META = {
+  student: {label:'Учень', icon:'🎒'},
+  parent:  {label:'Батьки', icon:'👨‍👩‍👧'},
+  teacher: {label:'Вчитель', icon:'🍎'},
+  admin:   {label:'Адмін', icon:'⚙️'},
+};
+
+function renderAuthScreen(){
+  const root = $('#appRoot');
+  root.innerHTML = '';
+  const mode = STATE.authMode;
+  const role = STATE.authRole;
+
+  const box = el(`
+    <div class="auth-screen">
+      <div class="auth-box">
+        <div class="auth-logo">
+          <div class="logo-mark">M</div>
+          <strong>МатеМакс</strong>
+        </div>
+        <div class="auth-tabs">
+          <div class="auth-tab ${mode==='login'?'active':''}" id="tabLogin">Вхід</div>
+          <div class="auth-tab ${mode==='register'?'active':''}" id="tabRegister">Реєстрація</div>
+        </div>
+        <div id="authBody"></div>
+      </div>
+    </div>
+  `);
+  root.appendChild(box);
+
+  $('#tabLogin').onclick = ()=>{ STATE.authMode='login'; renderAuthScreen(); };
+  $('#tabRegister').onclick = ()=>{ STATE.authMode='register'; renderAuthScreen(); };
+
+  if(mode==='login') renderLoginForm(); else renderRegisterForm();
+}
+
+function renderLoginForm(){
+  const body = $('#authBody');
+  body.innerHTML = `
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="your@email.com" value="">
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="loginPass" placeholder="••••••" value="">
+    </div>
+    <button class="btn btn-primary btn-block" id="loginBtn">Увійти →</button>
+    <p class="auth-foot-link">Немає акаунту? <b id="goRegister">Зареєструватися</b></p>
+  `;
+  $('#goRegister').onclick = ()=>{ STATE.authMode='register'; renderAuthScreen(); };
+  $('#loginBtn').onclick = doLogin;
+  body.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  });
+}
+
+async function doLogin(){
+  const email = $('#loginEmail').value.trim().toLowerCase();
+  const pass = $('#loginPass').value;
+  if(!email || !pass){ toast('Заповніть email і пароль', 'error'); return; }
+
+  if(API_MODE){
+    const btn = $('#loginBtn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Вхід...'; }
+    try {
+      const user = await API.login(email, pass);
+      STATE.currentUser = user;
+      STATE.currentPage = 'home';
+      toast(`Вітаємо, ${user.name}! 🎉`, 'success');
+      await syncUserDataFromBackend(user);
+      renderApp();
+    } catch(e) {
+      toast(e.message || 'Невірний email або пароль', 'error');
+      if(btn){ btn.disabled = false; btn.textContent = 'Увійти →'; }
+    }
+    return;
+  }
+
+  // Demo mode
+  const user = DB.users.find(u=>u.email.toLowerCase()===email && u.password===pass);
+  if(!user){ toast('Невірний email або пароль', 'error'); return; }
+  STATE.currentUser = user;
+  STATE.currentPage = 'home';
+  toast(`Вітаємо, ${user.name}!`, 'success');
+  renderApp();
+}
+
+function renderRegisterForm(){
+  const body = $('#authBody');
+  const role = STATE.authRole;
+  body.innerHTML = `
+    <div class="field">
+      <label>Я реєструюсь як:</label>
+      <div class="role-pick">
+        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin').map(([k,m])=>`
+          <div class="role-pick-item ${role===k?'active':''}" data-role="${k}">
+            <span class="ric">${m.icon}</span>${m.label}
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label>Повне ім'я${role==='parent'?' (батьків/опікуна)':''}</label>
+      <input type="text" id="regName" placeholder="Ім'я Прізвище">
+    </div>
+    ${role==='student' ? `
+    <div class="field">
+      <label>Клас дитини</label>
+      <select id="regGrade">
+        <option value="1">1 клас</option>
+        <option value="2">2 клас</option>
+        <option value="3">3 клас</option>
+        <option value="4">4 клас</option>
+      </select>
+    </div>` : ''}
+    ${role==='parent' ? `
+    <div class="field">
+      <label>Ім'я дитини</label>
+      <input type="text" id="regChildName" placeholder="Ім'я та прізвище дитини">
+    </div>
+    <div class="field">
+      <label>Клас дитини</label>
+      <select id="regGrade">
+        <option value="1">1 клас</option>
+        <option value="2">2 клас</option>
+        <option value="3">3 клас</option>
+        <option value="4">4 клас</option>
+      </select>
+    </div>` : ''}
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="regEmail" placeholder="your@email.com">
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="regPass" placeholder="Мінімум 6 символів">
+    </div>
+    <button class="btn btn-primary btn-block" id="registerBtn">Зареєструватися →</button>
+    <p class="auth-foot-link">Вже є акаунт? <b id="goLogin">Увійти</b></p>
+  `;
+  $all('.role-pick-item', body).forEach(it=>{
+    it.onclick = ()=>{ STATE.authRole = it.dataset.role; renderRegisterForm(); };
+  });
+  $('#goLogin').onclick = ()=>{ STATE.authMode='login'; renderAuthScreen(); };
+  $('#registerBtn').onclick = startRegistration;
+}
+
+async function startRegistration(){
+  const role = STATE.authRole;
+  const name = $('#regName').value.trim();
+  const email = $('#regEmail').value.trim().toLowerCase();
+  const pass = $('#regPass').value;
+  if(!name || !email || pass.length<6){ toast('Заповніть усі поля. Пароль — мінімум 6 символів', 'error'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('Введіть коректний email', 'error'); return; }
+
+  if(API_MODE){
+    const btn = $('#registerBtn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Реєстрація...'; }
+    try {
+      const grade = $('#regGrade') ? parseInt($('#regGrade').value) : null;
+      const childName = $('#regChildName') ? $('#regChildName').value.trim() : null;
+      const result = await API.register({ role, name, email, password: pass, grade, childName });
+      // В dev-режимі бекенд повертає devToken
+      if(result.devToken){
+        showEmailSentModal(result.devToken, email, result.verifyUrl);
+      } else {
+        showEmailSentModal(null, email);
+      }
+    } catch(e) {
+      toast(e.message || 'Помилка реєстрації', 'error');
+      if(btn){ btn.disabled = false; btn.textContent = 'Зареєструватися →'; }
+    }
+    return;
+  }
+
+  // Demo mode (in-memory)
+  if(DB.users.some(u=>u.email.toLowerCase()===email)){ toast('Цей email вже зареєстровано', 'error'); return; }
+  const reg = { role, name, email, password:pass };
+  if(role==='student'){ reg.grade = parseInt($('#regGrade').value); }
+  if(role==='parent'){ reg.childName = $('#regChildName').value.trim(); reg.grade = parseInt($('#regGrade').value); }
+  const token = 'vt_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  DB.pendingVerifications[token] = reg;
+  showEmailSentModal(token, email);
+}
+
+function showEmailSentModal(token, email, devVerifyUrl){
+  const verifyLink = devVerifyUrl || (token ? (location.origin + location.pathname + '?verify=' + token) : null);
+  openModal(`
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-head"><h3>📧 Перевірте пошту</h3><div class="modal-close" id="vClose">✕</div></div>
+      <div class="modal-body" style="text-align:center;">
+        <div style="font-size:40px;margin-bottom:10px;">📩</div>
+        <p style="margin-bottom:6px;">Ми надіслали лист підтвердження на</p>
+        <p style="font-weight:800;margin-bottom:16px;">${esc(email)}</p>
+        <p class="muted" style="margin-bottom:18px;line-height:1.6;">Відкрийте лист і натисніть кнопку «Підтвердити email». Після цього зможете увійти у свій акаунт.</p>
+        ${verifyLink ? `
+        <div style="background:var(--bg);border-radius:12px;padding:14px;text-align:left;margin-bottom:8px;">
+          <p class="muted" style="margin-bottom:8px;">🛠️ DEV-режим: посилання для тестування (в продакшні приходить на пошту):</p>
+          <a href="${verifyLink}" style="word-break:break-all;font-size:12px;color:var(--primary);font-weight:700;">${verifyLink}</a>
+        </div>
+        <button class="btn btn-accent btn-block" id="openVerifyLink" style="margin-top:10px;">✅ Симулювати підтвердження email</button>
+        ` : '<p class="muted" style="font-size:12px;">Якщо лист не прийшов — перевірте папку «Спам» або спробуйте знову.</p>'}
+      </div>
+    </div>
+  `, {persistent:true});
+  $('#vClose').onclick = ()=>{ closeModal(); };
+  if(verifyLink){
+    $('#openVerifyLink').onclick = async ()=>{
+      closeModal();
+      if(API_MODE && token){
+        try {
+          const user = await API.verifyEmail(token);
+          STATE.currentUser = user;
+          toast('Email підтверджено! Тепер увійдіть. 🎉', 'success');
+          await syncUserDataFromBackend(user);
+          STATE.authMode = 'login';
+          renderApp();
+        } catch(e) {
+          toast(e.message || 'Помилка підтвердження', 'error');
+          STATE.authMode = 'login';
+          renderAuthScreen();
+        }
+      } else {
+        completeRegistrationFromToken(token);
+      }
+    };
+  }
+}
+
+function completeRegistrationFromToken(token){
+  const reg = DB.pendingVerifications[token];
+  if(!reg){ toast('Посилання недійсне або вже використане', 'error'); return; }
+  delete DB.pendingVerifications[token];
+  completeRegistration(reg);
+}
+
+function completeRegistration(reg){
+  const newId = uid();
+  let newUser;
+  const anyTeacher = DB.users.find(u=>u.role==='teacher');
+  const defaultTeacherId = anyTeacher ? anyTeacher.id : null;
+
+  if(reg.role==='student'){
+    newUser = {id:newId, role:'student', name:reg.name, email:reg.email, password:reg.password,
+      grade:reg.grade, parentId:null, teacherId:defaultTeacherId, balance:0, trialUsed:false, plan:null, emailVerified:true};
+    DB.users.push(newUser);
+  } else if(reg.role==='parent'){
+    const childId = uid();
+    const child = {id:childId, role:'student', name:reg.childName||(reg.name+' (дитина)'), email:'',
+      password:'', grade:reg.grade, parentId:newId, teacherId:defaultTeacherId, balance:0, trialUsed:false, plan:null, emailVerified:true};
+    DB.users.push(child);
+    newUser = {id:newId, role:'parent', name:reg.name, email:reg.email, password:reg.password, children:[childId], emailVerified:true};
+    DB.users.push(newUser);
+  } else if(reg.role==='teacher'){
+    newUser = {id:newId, role:'teacher', name:reg.name, email:reg.email, password:reg.password, subject:'Математика', students:[], payouts:[], emailVerified:true};
+    DB.users.push(newUser);
+  }
+
+  toast('Email підтверджено! Тепер увійдіть, використовуючи свій email та пароль 🎉', 'success');
+  STATE.authMode = 'login';
+  renderAuthScreen();
+  const emailInput = $('#loginEmail');
+  if(emailInput) emailInput.value = reg.email;
+}
+
+function checkUrlForVerification(){
+  const hash = location.hash;
+  const m = hash.match(/#verify=(.+)$/);
+  if(m){
+    const token = decodeURIComponent(m[1]);
+    history.replaceState(null, '', location.pathname);
+    if(DB.pendingVerifications[token]){
+      completeRegistrationFromToken(token);
+    } else {
+      toast('Посилання підтвердження недійсне або вже використане', 'error');
+    }
+  }
+}
+
+function logout(){
+  TokenStore.clear();
+  STATE.currentUser = null;
+  STATE.authMode = 'login';
+  STATE.currentPage = 'home';
+  renderAuthScreen();
+}
+
+/* ---------------------------- APP SHELL & NAV ---------------------------- */
+const NAV_CONFIG = {
+  student: [
+    {id:'home', icon:'🏠', label:'Головна'},
+    {id:'schedule', icon:'📅', label:'Розклад'},
+    {id:'materials', icon:'📚', label:'Матеріали'},
+    {id:'games', icon:'🎮', label:'Ігри'},
+    {id:'homework', icon:'📝', label:'ДЗ'},
+    {id:'messages', icon:'💬', label:'Повідомлення'},
+    {id:'payment', icon:'💳', label:'Оплата'},
+  ],
+  teacher: [
+    {id:'home', icon:'🏠', label:'Головна'},
+    {id:'my_schedule', icon:'📅', label:'Мій розклад'},
+    {id:'students', icon:'🎒', label:'Учні'},
+    {id:'add_lesson', icon:'➕', label:'Додати урок'},
+    {id:'homework_teacher', icon:'📝', label:'ДЗ'},
+    {id:'add_material', icon:'📤', label:'Завантажити матеріал'},
+    {id:'messages_teacher', icon:'💬', label:'Повідомлення'},
+    {id:'payouts', icon:'💰', label:'Виплати'},
+  ],
+  parent: [
+    {id:'home', icon:'🏠', label:'Головна'},
+    {id:'schedule', icon:'📅', label:'Розклад'},
+    {id:'homework', icon:'📝', label:'ДЗ'},
+    {id:'progress', icon:'📈', label:'Прогрес'},
+    {id:'payment', icon:'💳', label:'Оплата'},
+  ],
+  admin: [
+    {id:'home', icon:'🏠', label:'Головна'},
+    {id:'admin_students', icon:'🎒', label:'Учні'},
+    {id:'admin_teachers', icon:'🍎', label:'Вчителі'},
+    {id:'admin_schedule', icon:'📅', label:'Розклад'},
+    {id:'admin_payments', icon:'💳', label:'Оплати'},
+  ],
+};
+
+const PAGE_TITLES = {
+  home:'Головна', schedule:'Розклад', materials:'Матеріали', games:'Ігри', homework:'Домашні завдання',
+  payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
+  homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
+  progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
+  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення',
+};
+
+function avatarLetter(name){ return (name||'?').trim()[0].toUpperCase(); }
+
+function renderApp(){
+  const user = STATE.currentUser;
+  if(!user){ renderAuthScreen(); return; }
+  const root = $('#appRoot');
+  const nav = NAV_CONFIG[user.role];
+  const roleMeta = ROLE_META[user.role];
+
+  root.innerHTML = `
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <div class="logo-mark">M</div>
+          <div class="brand-text"><strong>МатеМакс</strong><span>Школа математики</span></div>
+        </div>
+        <div class="sidebar-user">
+          <div class="avatar">${avatarLetter(user.name)}</div>
+          <div class="uinfo">
+            <strong>${esc(user.name)}</strong>
+            <span>${roleMeta.icon} ${roleMeta.label}${user.role==='student'?' · '+user.grade+' клас':''}</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav" id="sidebarNav"></nav>
+        <div class="sidebar-foot">
+          <button class="btn btn-ghost btn-block" id="logoutBtn">🚪 Вийти</button>
+        </div>
+      </aside>
+      <div class="main-area">
+        <div class="topbar">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="menu-toggle" id="menuToggle">☰</div>
+            <h1 id="pageTitle"></h1>
+          </div>
+          <div class="topbar-right">
+            <span class="badge">${todayLabel()}</span>
+          </div>
+        </div>
+        <div class="page-content" id="pageContent"></div>
+      </div>
+    </div>
+  `;
+
+  const navEl = $('#sidebarNav');
+  const unreadTotal = unreadCountFor(user.id);
+  nav.forEach(item=>{
+    const showBadge = (item.id==='messages' || item.id==='messages_teacher') && unreadTotal>0;
+    const it = el(`<div class="nav-item" data-page="${item.id}" style="position:relative;">
+      <span class="nav-ico">${item.icon}</span>${item.label}
+      ${showBadge ? `<span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${unreadTotal}</span>` : ''}
+    </div>`);
+    it.onclick = ()=>{ STATE.currentPage = item.id; renderApp(); };
+    navEl.appendChild(it);
+  });
+
+  $('#logoutBtn').onclick = logout;
+  $('#menuToggle').onclick = ()=>{ $('#sidebar').classList.toggle('open'); };
+
+  setActivePage(user.role);
+}
+
+function todayLabel(){
+  return new Date().toLocaleDateString('uk-UA', {weekday:'long', day:'numeric', month:'long'});
+}
+
+function setActivePage(role){
+  const page = STATE.currentPage;
+  $all('.nav-item').forEach(it=>it.classList.toggle('active', it.dataset.page===page));
+  $('#pageTitle').textContent = PAGE_TITLES[page] || 'МатеМакс';
+  $('#sidebar').classList.remove('open');
+  renderPageContent(page);
+}
+
+function renderPageContent(page){
+  const container = $('#pageContent');
+  container.innerHTML = '';
+  const user = STATE.currentUser;
+
+  const renderers = {
+    student: {
+      home: renderStudentHome, schedule: renderStudentSchedule, materials: renderStudentMaterials,
+      games: renderGamesHub, homework: renderStudentHomework, payment: renderStudentPayment,
+      messages: renderStudentMessages,
+    },
+    teacher: {
+      home: renderTeacherHome, my_schedule: renderTeacherSchedule, students: renderTeacherStudents,
+      add_lesson: renderAddLesson, homework_teacher: renderTeacherHomework, add_material: renderAddMaterial,
+      payouts: renderTeacherPayouts, messages_teacher: renderTeacherMessages,
+    },
+    parent: {
+      home: renderParentHome, schedule: renderParentSchedule, homework: renderParentHomework,
+      progress: renderParentProgress, payment: renderParentPayment,
+    },
+    admin: {
+      home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
+      admin_schedule: renderAdminSchedule, admin_payments: renderAdminPayments,
+    },
+  };
+
+  const fn = renderers[user.role] && renderers[user.role][page];
+  if(fn){ fn(container); }
+  else { container.innerHTML = `<div class="empty-state"><div class="ei">🚧</div><p>Розділ у розробці</p></div>`; }
+}
+
+/* ============================================================
+   РОЛЬ: УЧЕНЬ
+   ============================================================ */
+function studentLessons(studentId){
+  return DB.lessons.filter(l=>l.studentId===studentId).sort((a,b)=>new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+}
+function studentHomework(studentId){
+  return DB.homework.filter(h=>h.studentId===studentId).sort((a,b)=>new Date(a.due)-new Date(b.due));
+}
+
+function renderStudentHome(c){
+  const u = STATE.currentUser;
+  const lessons = studentLessons(u.id).filter(l=>l.status==='planned');
+  const hw = studentHomework(u.id);
+  const pendingHw = hw.filter(h=>!h.done);
+  const nextLesson = lessons[0];
+
+  c.innerHTML = `
+    <div class="grid grid-3" style="margin-bottom:22px;">
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">📅</div>
+        <div><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Запланованих уроків</div></div>
+      </div>
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">📝</div>
+        <div><div class="stat-val">${pendingHw.length}</div><div class="stat-lbl">Невиконаних ДЗ</div></div>
+      </div>
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">🎮</div>
+        <div><div class="stat-val">${Object.keys(DB.gameProgress[u.id]||{}).length}</div><div class="stat-lbl">Зіграних ігор</div></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="section-title">⏰ Наступний урок</div>
+        ${nextLesson ? `
+          <h3 style="font-size:17px;margin-bottom:6px;">${esc(nextLesson.subject)}</h3>
+          <p class="muted" style="margin-bottom:14px;">${fmtDate(nextLesson.date)} о ${nextLesson.time}${nextLesson.trial?' · <span style=\'color:var(--accent-dark);font-weight:700\'>Пробний урок (безкоштовно)</span>':''}</p>
+          <a href="${nextLesson.meetUrl}" target="_blank" class="btn btn-accent">📹 Приєднатися до Google Meet</a>
+        ` : `<div class="empty-state"><div class="ei">📭</div><p>Немає запланованих уроків</p></div>`}
+      </div>
+      <div class="card">
+        <div class="section-title">🎯 Швидкий доступ</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='games';renderApp();">🎮 Грати в ігри</button>
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='homework';renderApp();">📝 Переглянути ДЗ</button>
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='materials';renderApp();">📚 Матеріали уроків</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">📝 Останні ДЗ</div>
+      ${pendingHw.length ? pendingHw.slice(0,3).map(h=>`
+        <div class="hw-card card" style="margin-bottom:10px;padding:14px 16px;">
+          <b>${esc(h.title)}</b>
+          <p class="muted" style="margin-top:3px;">до ${fmtDate(h.due)}</p>
+        </div>
+      `).join('') : `<p class="muted">Усі домашні завдання виконано! 🎉</p>`}
+    </div>
+  `;
+}
+
+function renderStudentSchedule(c){
+  const u = STATE.currentUser;
+  renderScheduleView(c, studentLessons(u.id), {showJoin:true});
+}
+
+function renderScheduleView(c, lessons, opts={}){
+  const days = [];
+  const today = new Date();
+  for(let i=0;i<7;i++){
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    days.push(d);
+  }
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">📅 Розклад на 7 днів</div>
+      <div class="sched-grid">
+        ${days.map(d=>{
+          const iso = d.toISOString().slice(0,10);
+          const dayLessons = lessons.filter(l=>l.date===iso);
+          return `<div class="sched-day">
+            <h5>${weekdayShort(d)}, ${d.getDate()}</h5>
+            ${dayLessons.length ? dayLessons.map(l=>`
+              <div class="sched-lesson ${l.status==='completed'?'done':''}">
+                <b>${l.time}</b>${esc(l.subject)}
+                ${opts.showJoin && l.status==='planned' ? `<a href="${l.meetUrl}" target="_blank" style="display:block;margin-top:5px;color:var(--accent-dark);font-weight:700;">📹 Meet</a>` : ''}
+              </div>
+            `).join('') : `<p class="muted" style="text-align:center;font-size:11.5px;">—</p>`}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">📋 Усі уроки</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Час</th><th>Тема</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          ${lessons.map(l=>`
+            <tr>
+              <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${esc(l.subject)}</td>
+              <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
+              <td>${l.status==='planned'?`<a href="${l.meetUrl}" target="_blank" class="btn btn-sm btn-outline">📹 Meet</a>`:''}</td>
+            </tr>
+          `).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Немає уроків</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+function renderStudentMaterials(c){
+  const u = STATE.currentUser;
+  const mats = DB.materials.filter(m=>m.grade.includes(u.grade));
+  c.innerHTML = `
+    <div class="grid grid-3">
+      ${mats.map(m=>`
+        <div class="card card-hover">
+          <div style="font-size:30px;margin-bottom:10px;">📄</div>
+          <h4 style="font-size:15px;margin-bottom:6px;">${esc(m.title)}</h4>
+          <p class="muted" style="margin-bottom:14px;">${esc(m.desc)}</p>
+          <a href="${m.fileUrl}" class="btn btn-outline btn-sm btn-block">📥 ${esc(m.fileName)}</a>
+        </div>
+      `).join('') || `<div class="empty-state"><div class="ei">📚</div><p>Матеріалів поки немає</p></div>`}
+    </div>
+  `;
+}
+
+function renderStudentHomework(c){
+  const u = STATE.currentUser;
+  const hw = studentHomework(u.id);
+  c.innerHTML = `<div id="hwList"></div>`;
+  renderHwListStudent($('#hwList'), hw);
+}
+
+function renderHwListStudent(container, hw){
+  container.innerHTML = hw.map(h=>`
+    <div class="card hw-card ${h.done?'done':''}" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:240px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <h3 style="font-size:16px;">${esc(h.title)}</h3>
+            ${h.done ? '<span class="badge badge-accent">Виконано</span>' : `<span class="badge badge-warn">до ${fmtDate(h.due)}</span>`}
+            ${h.grade!=null ? `<span class="badge">Оцінка: ${h.grade}/12</span>` : ''}
+          </div>
+          <p class="muted" style="margin-bottom:10px;">${esc(h.desc)}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            ${h.fileUrl ? `<a href="${h.fileUrl}" class="btn btn-sm btn-outline">📥 Завантажити файл${h.fileName?' ('+esc(h.fileName)+')':''}</a>` : ''}
+            ${h.audioTranscript ? `<button class="btn btn-sm btn-outline" onclick="showTranscript('${h.id}')">📝 Текст</button>` : ''}
+          </div>
+          ${h.audioBase64 ? `<audio class="audio-player" controls src="${h.audioBase64}"></audio>` : ''}
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" ${h.done?'checked':''} onchange="toggleHwDone('${h.id}', this.checked)" style="width:18px;height:18px;">
+          Виконано
+        </label>
+      </div>
+    </div>
+  `).join('') || `<div class="empty-state"><div class="ei">🎉</div><p>Домашніх завдань немає</p></div>`;
+}
+
+function toggleHwDone(hwId, val){
+  const hw = DB.homework.find(h=>h.id===hwId);
+  if(hw){ hw.done = val; toast(val ? 'Чудово! ДЗ позначено виконаним' : 'Позначку знято', 'success'); renderPageContent(STATE.currentPage); }
+}
+
+function showTranscript(hwId){
+  const hw = DB.homework.find(h=>h.id===hwId);
+  if(!hw) return;
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>📝 Транскрипт голосового повідомлення</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body"><p style="line-height:1.7;">${esc(hw.audioTranscript)}</p></div>
+    </div>
+  `);
+}
+
+/* ----- Повідомлення (учень) ----- */
+function renderStudentMessages(c){
+  const u = STATE.currentUser;
+  const teacher = getUserById(u.teacherId);
+  const admin = DB.users.find(x=>x.role==='admin');
+  const contacts = [teacher, admin].filter(Boolean);
+
+  if(!contacts.length){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
+
+  c.innerHTML = `<div class="grid grid-2" id="msgContactsGrid" style="align-items:flex-start;"></div>`;
+  const grid = $('#msgContactsGrid');
+  grid.innerHTML = contacts.map(p=>{
+    const conv = getConversation(u.id, p.id);
+    const last = conv[conv.length-1];
+    const unread = unreadCountFor(u.id, p.id);
+    return `<div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openStudentConversation('${p.id}')">
+      ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:${p.role==='admin'?'var(--text)':'var(--primary)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(p.name)}</div>
+        <div><h4 style="font-size:14.5px;">${esc(p.name)}</h4><span class="muted">${p.role==='admin'?'Адміністрація':'Ваш вчитель'}</span></div>
+      </div>
+      <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+    </div>`;
+  }).join('');
+}
+
+function openStudentConversation(otherId){
+  openChatModal(otherId);
+}
+
+/* ----- Повідомлення (вчитель) ----- */
+function renderTeacherMessages(c){
+  const u = STATE.currentUser;
+  const students = getStudentsOf(u.id);
+  const admin = DB.users.find(x=>x.role==='admin');
+  const contacts = [admin, ...students].filter(Boolean);
+
+  if(!contacts.length){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
+
+  c.innerHTML = `<div class="grid grid-3" id="msgContactsGridT"></div>`;
+  const grid = $('#msgContactsGridT');
+  grid.innerHTML = contacts.map(p=>{
+    const conv = getConversation(u.id, p.id);
+    const last = conv[conv.length-1];
+    const unread = unreadCountFor(u.id, p.id);
+    return `<div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openChatModal('${p.id}')">
+      ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:${p.role==='admin'?'var(--text)':'var(--accent)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(p.name)}</div>
+        <div><h4 style="font-size:14.5px;">${esc(p.name)}</h4><span class="muted">${p.role==='admin'?'Адміністрація':(p.grade+' клас')}</span></div>
+      </div>
+      <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+    </div>`;
+  }).join('');
+}
+
+/* ----- Оплата (учень) ----- */
+const PRICING = {
+  trial: 0, single:500, monthlyPerLesson:480, longPerLesson:450,
+  packages: [
+    {key:'m1', label:'Місяць × 1/тиж', lessons:4, total:1920},
+    {key:'m2', label:'Місяць × 2/тиж', lessons:8, total:3840},
+    {key:'m3', label:'Місяць × 3/тиж', lessons:12, total:5760},
+    {key:'q1', label:'3 міс × 1/тиж', lessons:12, total:5400},
+    {key:'q2', label:'3 міс × 2/тиж', lessons:24, total:10800},
+    {key:'q3', label:'3 міс × 3/тиж', lessons:36, total:16200},
+    {key:'h1', label:'6 міс × 1/тиж', lessons:24, total:10800},
+    {key:'h2', label:'6 міс × 2/тиж', lessons:48, total:21600},
+    {key:'h3', label:'6 міс × 3/тиж', lessons:72, total:32400},
+    {key:'y2', label:'Рік × 2/тиж', lessons:96, total:43200},
+  ],
+};
+
+function renderStudentPayment(c){
+  const u = STATE.currentUser;
+  renderPaymentView(c, u);
+}
+
+function fmtEur(uahAmount){
+  const rate = DB.paymentInfo.uahToEurRate || 45;
+  const eur = uahAmount / rate;
+  return '≈ ' + eur.toLocaleString('uk-UA', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' EUR';
+}
+
+function renderPaymentInfoCard(){
+  const pi = DB.paymentInfo;
+  return `
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">🏦 Реквізити для оплати</div>
+      <p class="muted" style="margin-bottom:14px;">Оберіть зручний спосіб переказу коштів. Після оплати натисніть «Я оплатив(ла)» нижче — адміністратор підтвердить надходження.</p>
+      <div class="grid grid-3">
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:6px;">💳 Банківська картка</div>
+          <b style="font-size:15px;letter-spacing:1px;">${esc(pi.cardNumber)}</b>
+          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}</p>
+        </div>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:6px;">🏦 IBAN-переказ (${esc(pi.accountCurrency)})</div>
+          <b style="font-size:13px;word-break:break-all;">${esc(pi.iban)}</b>
+          <p class="muted" style="margin-top:6px;">${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b><br>Код компанії: ${esc(pi.edrpou)}</p>
+          <p class="hint" style="margin-top:8px;color:var(--warning);">⚠️ Для переказу з-за кордону (напр. з України) обов'язково вкажіть SWIFT/BIC код банку</p>
+        </div>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:6px;">🅿️ PayPal</div>
+          <b style="font-size:14px;">${esc(pi.paypalEmail)}</b>
+          <p class="muted" style="margin-top:6px;">Вкажіть ПІБ дитини в коментарі</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPaymentView(c, student){
+  const payments = DB.payments.filter(p=>p.studentId===student.id);
+  c.innerHTML = `
+    ${!student.trialUsed ? `
+      <div class="card" style="margin-bottom:18px;background:var(--accent-light);border-color:var(--accent);">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;">🎁 Перший урок безкоштовно!</div>
+            <p class="muted">Спробуйте навчання у МатеМакс без жодних витрат</p>
+          </div>
+          <button class="btn btn-accent" onclick="claimTrial('${student.id}')">Активувати пробний урок</button>
+        </div>
+      </div>
+    ` : ''}
+
+    ${student.plan ? `
+      <div class="card" style="margin-bottom:18px;">
+        <div class="section-title">📦 Активний тариф</div>
+        <p style="font-size:17px;font-weight:700;margin-bottom:6px;">${esc(student.plan.label)}</p>
+        <p class="muted">Пройдено ${planUsedLessons(student)} з ${student.plan.totalLessons} занять · залишилось ${planRemainingLessons(student)}</p>
+        <div class="progress-track" style="margin-top:10px;"><div class="progress-fill" style="width:${Math.min(100, Math.round(planUsedLessons(student)/student.plan.totalLessons*100))}%;"></div></div>
+      </div>
+    ` : ''}
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">💳 Разові уроки</div>
+      <div class="grid grid-3">
+        <div class="price-card">
+          <div class="pname">Разовий урок</div>
+          <div class="pval">500 грн</div>
+          <div class="pper">${fmtEur(500)} · за 1 урок</div>
+          <button class="btn btn-outline btn-block" onclick="payNow('${student.id}', 500, 'Разовий урок', 1)">Оплатити</button>
+        </div>
+        <div class="price-card">
+          <div class="pname">Помісячно</div>
+          <div class="pval">480 грн</div>
+          <div class="pper">${fmtEur(480)} · за урок</div>
+          <button class="btn btn-outline btn-block" onclick="toast('Оберіть пакет нижче','info')">Деталі нижче</button>
+        </div>
+        <div class="price-card">
+          <div class="pname">Від 3 місяців</div>
+          <div class="pval">450 грн</div>
+          <div class="pper">${fmtEur(450)} · за урок</div>
+          <button class="btn btn-outline btn-block" onclick="toast('Оберіть пакет нижче','info')">Деталі нижче</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">📦 Пакети занять</div>
+      <div class="grid grid-4">
+        ${PRICING.packages.map(p=>`
+          <div class="price-card ${p.key==='m2'?'popular':''}">
+            ${p.key==='m2'?'<div class="pop-badge">Популярний</div>':''}
+            <div class="pname">${p.label}</div>
+            <div class="pval">${fmtMoney(p.total)}</div>
+            <div class="pper">${fmtEur(p.total)} · ${p.lessons} уроків</div>
+            <button class="btn btn-primary btn-block btn-sm" onclick="payNow('${student.id}', ${p.total}, '${esc(p.label)}', ${p.lessons})">Оплатити</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    ${renderPaymentInfoCard()}
+
+    <div class="card">
+      <div class="section-title">🧾 Історія платежів</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Опис</th><th>Сума</th><th>Статус</th></tr></thead>
+        <tbody>
+          ${payments.map(p=>{
+            const badge = p.status==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
+              : p.status==='rejected' ? '<span class="badge badge-danger">Уточнюється</span>'
+              : '<span class="badge badge-warn">Очікує підтвердження</span>';
+            return `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.desc)}</td><td>${fmtMoney(p.amount)}</td><td>${badge}</td></tr>`;
+          }).join('')
+            || `<tr><td colspan="4" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+function claimTrial(studentId){
+  const s = getUserById(studentId);
+  if(!s) return;
+  s.trialUsed = true;
+  DB.payments.push({id:uid(), studentId:s.id, parentId:s.parentId, date:new Date().toISOString().slice(0,10), amount:0, desc:'Пробний урок (безкоштовно)', status:'confirmed'});
+  toast('Пробний урок активовано! Очікуйте на дзвінок вчителя 🎉', 'success');
+  renderPageContent(STATE.currentPage);
+}
+
+function payNow(studentId, amount, desc, lessonsCount){
+  const s = getUserById(studentId);
+  if(!s) return;
+  openModal(`
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-head"><h3>💳 Оплата</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body" style="text-align:center;">
+        <p class="muted" style="margin-bottom:8px;">${esc(desc)}</p>
+        <p style="font-size:30px;font-weight:800;color:var(--primary);margin-bottom:18px;">${fmtMoney(amount)}</p>
+        <p class="muted" style="margin-bottom:14px;text-align:left;">Перекажіть кошти на один з наших реквізитів (картка, IBAN або PayPal — дивіться розділ «Реквізити для оплати»), а потім натисніть кнопку нижче. Адміністратор підтвердить надходження коштів.</p>
+        <button class="btn btn-accent btn-block" onclick="confirmPayment('${studentId}', ${amount}, '${esc(desc).replace(/'/g,"\\'")}', ${lessonsCount||0})">✅ Я оплатив(ла), повідомити адміністратора</button>
+      </div>
+    </div>
+  `);
+}
+
+function confirmPayment(studentId, amount, desc, lessonsCount){
+  const s = getUserById(studentId);
+  if(!s) return;
+  DB.payments.push({id:uid(), studentId, parentId:s.parentId, date:new Date().toISOString().slice(0,10), amount, desc, status:'pending'});
+  if(lessonsCount>0){
+    const prevRemaining = s.plan ? planRemainingLessons(s) : 0;
+    s.plan = {label:desc, totalLessons:(planUsedLessons(s)) + prevRemaining + lessonsCount};
+  }
+  const admin = DB.users.find(u=>u.role==='admin');
+  if(admin) addNotification(admin.id, `${s.name}: нова оплата "${desc}" на суму ${fmtMoney(amount)} очікує підтвердження`, 'payment');
+  closeModal();
+  toast('Дякуємо! Оплату передано на підтвердження адміністратору 🎉', 'success');
+  renderPageContent(STATE.currentPage);
+}
+
+/* ============================================================
+   РОЛЬ: БАТЬКИ
+   ============================================================ */
+function parentChildPicker(children, onPick){
+  if(children.length<=1) return '';
+  return `<div class="game-filterbar" id="childPicker">
+    ${children.map((ch,i)=>`<div class="chip ${i===0?'active':''}" data-cid="${ch.id}">${esc(ch.name)} (${ch.grade} кл.)</div>`).join('')}
+  </div>`;
+}
+function bindChildPicker(container, onPick){
+  const picker = $('#childPicker', container);
+  if(!picker) return;
+  $all('.chip', picker).forEach(chip=>{
+    chip.onclick = ()=>{
+      $all('.chip', picker).forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      onPick(chip.dataset.cid);
+    };
+  });
+}
+
+function renderParentHome(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  c.innerHTML = `
+    <div class="grid grid-2">
+      ${children.map(ch=>{
+        const lessons = studentLessons(ch.id).filter(l=>l.status==='planned');
+        const hw = studentHomework(ch.id).filter(h=>!h.done);
+        const next = lessons[0];
+        return `
+        <div class="card card-hover">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
+            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade} клас</span></div>
+          </div>
+          <div class="grid grid-2" style="margin-bottom:14px;">
+            <div class="badge">📅 ${lessons.length} уроків</div>
+            <div class="badge badge-warn">📝 ${hw.length} ДЗ</div>
+          </div>
+          ${next ? `<p class="muted" style="margin-bottom:10px;">Наступний урок: <b>${esc(next.subject)}</b>, ${fmtDate(next.date)} о ${next.time}</p>` : ''}
+          <button class="btn btn-outline btn-block btn-sm" onclick="openChildDetail('${ch.id}')">Детальніше →</button>
+        </div>`;
+      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`}
+    </div>
+  `;
+}
+
+function openChildDetail(childId){
+  STATE.currentPage = 'schedule';
+  STATE._selectedChild = childId;
+  renderApp();
+}
+
+function renderParentSchedule(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
+  const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
+  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  bindChildPicker(c, (cid)=>{ renderScheduleView($('#parentSubContent'), studentLessons(cid)); });
+  renderScheduleView($('#parentSubContent'), studentLessons(selected));
+}
+
+function renderParentHomework(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
+  const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
+  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  bindChildPicker(c, (cid)=>{ renderHwListParent($('#parentSubContent'), studentHomework(cid)); });
+  renderHwListParent($('#parentSubContent'), studentHomework(selected));
+}
+function renderHwListParent(container, hw){
+  // read-only version (parents can view but checkbox toggling stays student-driven; here allow view)
+  container.innerHTML = hw.map(h=>`
+    <div class="card hw-card ${h.done?'done':''}" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <h3 style="font-size:16px;">${esc(h.title)}</h3>
+        ${h.done ? '<span class="badge badge-accent">Виконано</span>' : `<span class="badge badge-warn">до ${fmtDate(h.due)}</span>`}
+        ${h.grade!=null ? `<span class="badge">Оцінка: ${h.grade}/12</span>` : ''}
+      </div>
+      <p class="muted" style="margin-bottom:10px;">${esc(h.desc)}</p>
+      ${h.fileUrl ? `<a href="${h.fileUrl}" class="btn btn-sm btn-outline">📥 Файл ${esc(h.fileName||'')}</a>` : ''}
+      ${h.audioBase64 ? `<audio class="audio-player" controls src="${h.audioBase64}"></audio>` : ''}
+    </div>
+  `).join('') || `<div class="empty-state"><div class="ei">🎉</div><p>Домашніх завдань немає</p></div>`;
+}
+
+function renderParentProgress(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
+  c.innerHTML = children.map(ch=>{
+    const allHw = studentHomework(ch.id);
+    const doneHw = allHw.filter(h=>h.done);
+    const grades = allHw.filter(h=>h.grade!=null).map(h=>h.grade);
+    const avgGrade = grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(1) : '—';
+    const gp = DB.gameProgress[ch.id] || {};
+    const gamesPlayed = Object.keys(gp).length;
+    const pct = allHw.length ? Math.round(doneHw.length/allHw.length*100) : 0;
+    return `
+      <div class="card" style="margin-bottom:18px;">
+        <div class="section-title">📈 ${esc(ch.name)} — ${ch.grade} клас</div>
+        <div class="grid grid-3" style="margin-bottom:18px;">
+          <div class="card stat-card" style="box-shadow:none;border:1px solid var(--border);">
+            <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">⭐</div>
+            <div><div class="stat-val">${avgGrade}</div><div class="stat-lbl">Середній бал</div></div>
+          </div>
+          <div class="card stat-card" style="box-shadow:none;border:1px solid var(--border);">
+            <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">📝</div>
+            <div><div class="stat-val">${doneHw.length}/${allHw.length}</div><div class="stat-lbl">ДЗ виконано</div></div>
+          </div>
+          <div class="card stat-card" style="box-shadow:none;border:1px solid var(--border);">
+            <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">🎮</div>
+            <div><div class="stat-val">${gamesPlayed}</div><div class="stat-lbl">Зіграних ігор</div></div>
+          </div>
+        </div>
+        <p class="muted" style="margin-bottom:8px;">Виконання домашніх завдань</p>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderParentPayment(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
+  const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
+  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  bindChildPicker(c, (cid)=>{ renderPaymentView($('#parentSubContent'), getUserById(cid)); });
+  renderPaymentView($('#parentSubContent'), getUserById(selected));
+}
+
+/* ============================================================
+   РОЛЬ: ВЧИТЕЛЬ
+   ============================================================ */
+function renderTeacherHome(c){
+  const u = STATE.currentUser;
+  const students = getStudentsOf(u.id);
+  const lessons = DB.lessons.filter(l=>l.teacherId===u.id && l.status==='planned');
+  const todayIso = new Date().toISOString().slice(0,10);
+  const todayLessons = lessons.filter(l=>l.date===todayIso);
+  const pendingPayout = (u.payouts||[]).find(p=>p.status==='pending');
+
+  c.innerHTML = `
+    <div class="grid grid-3" style="margin-bottom:22px;">
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">🎒</div>
+        <div><div class="stat-val">${students.length}</div><div class="stat-lbl">Учнів</div></div>
+      </div>
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">📅</div>
+        <div><div class="stat-val">${todayLessons.length}</div><div class="stat-lbl">Уроків сьогодні</div></div>
+      </div>
+      <div class="card card-hover stat-card">
+        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">💰</div>
+        <div><div class="stat-val">${pendingPayout?fmtMoney(pendingPayout.amount):'—'}</div><div class="stat-lbl">До виплати</div></div>
+      </div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="section-title">📅 Уроки сьогодні</div>
+        ${todayLessons.length ? todayLessons.map(l=>{
+          const st = getUserById(l.studentId);
+          return `<div class="sched-lesson" style="margin-bottom:10px;"><b>${l.time} — ${esc(st?st.name:'')}</b>${esc(l.subject)}
+            <a href="${l.meetUrl}" target="_blank" style="display:block;margin-top:5px;color:var(--accent-dark);font-weight:700;">📹 Приєднатись</a></div>`;
+        }).join('') : `<p class="muted">Сьогодні уроків немає</p>`}
+      </div>
+      <div class="card">
+        <div class="section-title">🎯 Швидкі дії</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='add_lesson';renderApp();">➕ Додати урок</button>
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='homework_teacher';renderApp();">📝 Дати ДЗ</button>
+          <button class="btn btn-outline btn-block" onclick="STATE.currentPage='add_material';renderApp();">📤 Завантажити матеріал</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTeacherSchedule(c){
+  const u = STATE.currentUser;
+  const lessons = DB.lessons.filter(l=>l.teacherId===u.id).sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  const enriched = lessons.map(l=>({...l, subject: (getUserById(l.studentId)?.name||'') + ' — ' + l.subject}));
+  renderScheduleView(c, enriched, {showJoin:true});
+}
+
+function renderTeacherStudents(c){
+  const u = STATE.currentUser;
+  const students = getStudentsOf(u.id);
+  c.innerHTML = `
+    <div class="grid grid-3">
+      ${students.map(s=>{
+        const hw = studentHomework(s.id);
+        const pendingHw = hw.filter(h=>!h.done).length;
+        const upcoming = studentLessons(s.id).filter(l=>l.status==='planned').length;
+        return `
+        <div class="card card-hover">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(s.name)}</div>
+            <div><h3 style="font-size:15.5px;">${esc(s.name)}</h3><span class="muted">${s.grade} клас</span></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            <span class="badge">📅 ${upcoming} уроків</span>
+            <span class="badge badge-warn">📝 ${pendingHw} ДЗ</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openAddLessonFor('${s.id}')">+ Урок</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openAddHwFor('${s.id}')">+ ДЗ</button>
+            <button class="btn btn-outline btn-sm" onclick="openChatModal('${s.id}')">💬</button>
+          </div>
+        </div>`;
+      }).join('') || `<div class="empty-state"><div class="ei">🎒</div><p>Учнів поки немає</p></div>`}
+    </div>
+  `;
+}
+
+function renderAddLesson(c){
+  const u = STATE.currentUser;
+  const students = getStudentsOf(u.id);
+  if(!students.length){
+    c.innerHTML = `<div class="empty-state"><div class="ei">🎒</div><p>У вас ще немає учнів. Учні з'являться тут, щойно зареєструються або їх додасть адміністратор.</p></div>`;
+    return;
+  }
+  c.innerHTML = `
+    <div class="card" style="max-width:560px;">
+      <div class="section-title">➕ Додати урок</div>
+      <div class="field">
+        <label>Учень</label>
+        <select id="alStudent">${students.map(s=>`<option value="${s.id}">${esc(s.name)} (${s.grade} кл.)</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Тема уроку</label><input id="alSubject" placeholder="Наприклад: Додавання у стовпчик"></div>
+      <div class="field-row">
+        <div class="field"><label>Дата</label><input type="date" id="alDate" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>Час</label><input type="time" id="alTime" value="15:00"></div>
+      </div>
+      <div class="field"><label>Посилання Google Meet</label><input id="alMeet" placeholder="https://meet.google.com/..." value="https://meet.google.com/new-lesson-link"></div>
+      <button class="btn btn-primary btn-block" id="alSubmit">Створити урок</button>
+    </div>
+  `;
+  if(STATE._presetStudent){ $('#alStudent').value = STATE._presetStudent; STATE._presetStudent = null; }
+  $('#alSubmit').onclick = ()=>{
+    const studentId = $('#alStudent').value;
+    const subject = $('#alSubject').value.trim();
+    const date = $('#alDate').value;
+    const time = $('#alTime').value;
+    const meetUrl = $('#alMeet').value.trim() || 'https://meet.google.com/new-lesson';
+    if(!subject || !date || !time){ toast('Заповніть усі поля', 'error'); return; }
+    DB.lessons.push({id:uid(), studentId, teacherId:u.id, subject, date, time, status:'planned', meetUrl});
+    toast('Урок успішно додано!', 'success');
+    STATE.currentPage = 'my_schedule';
+    renderApp();
+  };
+}
+function openAddLessonFor(studentId){ STATE._presetStudent = studentId; STATE.currentPage='add_lesson'; renderApp(); }
+
+/* ----- ДЗ вчителя (з аудіозаписом) ----- */
+let mediaRecorder, audioChunks=[], recognizedTranscript='', recordedAudioBase64=null;
+
+function renderTeacherHomework(c){
+  const u = STATE.currentUser;
+  const students = getStudentsOf(u.id);
+  const allHw = DB.homework.filter(h=>h.teacherId===u.id).sort((a,b)=>new Date(b.due)-new Date(a.due));
+  if(!students.length){
+    c.innerHTML = `<div class="empty-state"><div class="ei">🎒</div><p>У вас ще немає учнів, яким можна видати ДЗ.</p></div>`;
+    return;
+  }
+  c.innerHTML = `
+    <div class="grid" style="grid-template-columns:1fr 1.3fr;gap:20px;align-items:flex-start;">
+      <div class="card" id="addHwForm">
+        <div class="section-title">📝 Нове домашнє завдання</div>
+        <div class="field">
+          <label>Учень</label>
+          <select id="hwStudent">${students.map(s=>`<option value="${s.id}">${esc(s.name)} (${s.grade} кл.)</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Назва ДЗ</label><input id="hwTitle" placeholder="Наприклад: Множення на 2 і 3"></div>
+        <div class="field"><label>Опис ДЗ</label><textarea id="hwDesc" placeholder="Опишіть, що потрібно зробити..."></textarea></div>
+        <div class="field"><label>Термін виконання</label><input type="date" id="hwDue" value="${new Date(Date.now()+3*86400000).toISOString().slice(0,10)}"></div>
+
+        <div class="field">
+          <label>Файл для учня (необов'язково)</label>
+          <div class="field-row">
+            <input id="hwFileName" placeholder="Назва файлу (напр. dz.pdf)">
+            <input id="hwFileUrl" placeholder="URL файлу">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>🎙️ Голосове повідомлення (необов'язково)</label>
+          <div class="recorder-box" id="recorderBox">
+            <button class="btn btn-outline" id="recBtn" type="button">🎙️ Записати</button>
+            <p class="muted" id="recStatus" style="margin-top:10px;">Натисніть, щоб почати запис українською мовою</p>
+            <audio id="recAudioPreview" class="audio-player hidden" controls></audio>
+            <div id="recTranscriptBox" class="hidden" style="text-align:left;background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.6;"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="hwSubmit" style="margin-top:6px;">Створити ДЗ</button>
+      </div>
+
+      <div>
+        <div class="section-title">📋 Видані домашні завдання</div>
+        ${allHw.map(h=>{
+          const st = getUserById(h.studentId);
+          return `<div class="card hw-card ${h.done?'done':''}" style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div>
+                <b>${esc(h.title)}</b> <span class="muted">— ${esc(st?st.name:'')}</span>
+                <p class="muted" style="margin-top:4px;">до ${fmtDate(h.due)}</p>
+              </div>
+              <div>${h.done?'<span class="badge badge-accent">Виконано</span>':'<span class="badge badge-warn">Очікує</span>'}</div>
+            </div>
+            ${h.audioBase64 ? `<audio class="audio-player" controls src="${h.audioBase64}"></audio>` : ''}
+            ${h.done && h.grade==null ? `<div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+              <input type="number" min="1" max="12" placeholder="Оцінка /12" id="grade_${h.id}" style="width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;">
+              <button class="btn btn-sm btn-accent" onclick="setGrade('${h.id}')">Виставити</button>
+            </div>` : (h.grade!=null ? `<p style="margin-top:8px;font-weight:700;color:var(--primary);">Оцінка: ${h.grade}/12</p>` : '')}
+          </div>`;
+        }).join('') || `<div class="empty-state"><div class="ei">📝</div><p>ДЗ ще не видавались</p></div>`}
+      </div>
+    </div>
+  `;
+
+  if(STATE._presetStudent){ $('#hwStudent').value = STATE._presetStudent; STATE._presetStudent = null; }
+  recordedAudioBase64 = null; recognizedTranscript='';
+  setupRecorder();
+
+  $('#hwSubmit').onclick = ()=>{
+    const studentId = $('#hwStudent').value;
+    const title = $('#hwTitle').value.trim();
+    const desc = $('#hwDesc').value.trim();
+    const due = $('#hwDue').value;
+    const fileName = $('#hwFileName').value.trim();
+    const fileUrl = $('#hwFileUrl').value.trim();
+    if(!title || !desc || !due){ toast('Заповніть назву, опис та термін', 'error'); return; }
+    DB.homework.push({
+      id:uid(), studentId, teacherId:u.id, title, desc, due, done:false, grade:null,
+      fileUrl: fileUrl||null, fileName: fileName||null,
+      audioBase64: recordedAudioBase64, audioTranscript: recognizedTranscript||null,
+    });
+    toast('Домашнє завдання створено!', 'success');
+    renderPageContent('homework_teacher');
+  };
+}
+function openAddHwFor(studentId){ STATE._presetStudent = studentId; STATE.currentPage='homework_teacher'; renderApp(); }
+
+function setGrade(hwId){
+  const inp = $('#grade_'+hwId);
+  const val = parseInt(inp.value);
+  if(!val || val<1 || val>12){ toast('Оцінка має бути від 1 до 12', 'error'); return; }
+  const hw = DB.homework.find(h=>h.id===hwId);
+  hw.grade = val;
+  toast('Оцінку виставлено', 'success');
+  renderPageContent('homework_teacher');
+}
+
+function setupRecorder(){
+  const recBtn = $('#recBtn');
+  if(!recBtn) return;
+  let recognizing = false, recognition = null;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  recBtn.onclick = async ()=>{
+    if(recBtn.dataset.recording==='1'){
+      // stop
+      if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
+      if(recognition){ try{recognition.stop();}catch(e){} }
+      recBtn.dataset.recording = '0';
+      recBtn.innerHTML = '🎙️ Записати';
+      $('#recStatus').innerHTML = 'Обробка запису...';
+      return;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e=>audioChunks.push(e.data);
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(audioChunks, {type:'audio/webm'});
+        const reader = new FileReader();
+        reader.onloadend = ()=>{
+          recordedAudioBase64 = reader.result;
+          const preview = $('#recAudioPreview');
+          if(preview){ preview.src = recordedAudioBase64; preview.classList.remove('hidden'); }
+          $('#recStatus').innerHTML = '✅ Запис завершено';
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t=>t.stop());
+      };
+      mediaRecorder.start();
+      recBtn.dataset.recording = '1';
+      recBtn.innerHTML = '⏹️ Зупинити';
+      $('#recStatus').innerHTML = '<span class="rec-dot"></span> Йде запис... говоріть зараз';
+
+      if(SpeechRec){
+        recognition = new SpeechRec();
+        recognition.lang = 'uk-UA';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognizedTranscript = '';
+        recognition.onresult = (e)=>{
+          let finalText='';
+          for(let i=0;i<e.results.length;i++){ finalText += e.results[i][0].transcript + ' '; }
+          recognizedTranscript = finalText.trim();
+          const box = $('#recTranscriptBox');
+          if(box){ box.classList.remove('hidden'); box.innerHTML = '<b>Транскрипт:</b><br>' + esc(recognizedTranscript); }
+        };
+        recognition.onerror = ()=>{};
+        try{ recognition.start(); }catch(e){}
+      } else {
+        $('#recStatus').innerHTML += '<br><span class="muted">(розпізнавання мовлення не підтримується цим браузером)</span>';
+      }
+    }catch(err){
+      toast('Не вдалося отримати доступ до мікрофона', 'error');
+    }
+  };
+}
+
+function renderAddMaterial(c){
+  const u = STATE.currentUser;
+  const myMats = DB.materials.filter(m=>m.teacherId===u.id).sort((a,b)=>new Date(b.uploadedAt)-new Date(a.uploadedAt));
+  c.innerHTML = `
+    <div class="grid" style="grid-template-columns:1fr 1.2fr;gap:20px;align-items:flex-start;">
+      <div class="card">
+        <div class="section-title">📤 Завантажити матеріал</div>
+        <div class="field"><label>Назва матеріалу</label><input id="matTitle" placeholder="Наприклад: Таблиця множення"></div>
+        <div class="field"><label>Опис</label><textarea id="matDesc" placeholder="Короткий опис матеріалу"></textarea></div>
+        <div class="field">
+          <label>Для яких класів</label>
+          <div class="grid grid-4" style="gap:8px;">
+            ${[1,2,3,4].map(g=>`
+              <label class="grade-pick-chip" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:2px solid var(--border);border-radius:12px;cursor:pointer;font-weight:700;font-size:13px;color:var(--text-light);transition:all .15s ease;">
+                <input type="checkbox" class="matGrade" value="${g}" style="width:16px;height:16px;">
+                ${g} клас
+              </label>`).join('')}
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Спосіб додавання файлу</label>
+          <div class="auth-tabs" style="margin-bottom:14px;">
+            <div class="auth-tab active" id="matTabUpload">📎 Завантажити файл</div>
+            <div class="auth-tab" id="matTabLink">🔗 Посилання</div>
+          </div>
+        </div>
+
+        <div id="matUploadBlock">
+          <div class="field">
+            <label>Файл (PDF, Word .doc/.docx, зображення — до 5 МБ)</label>
+            <input type="file" id="matFileInput" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.ppt,.pptx,.xls,.xlsx">
+            <p class="hint" id="matFileStatus">Файл буде збережено на платформі та доступний учням для завантаження</p>
+          </div>
+        </div>
+        <div id="matLinkBlock" class="hidden">
+          <div class="field"><label>Назва файлу</label><input id="matFileName" placeholder="material.pdf"></div>
+          <div class="field"><label>URL файлу</label><input id="matFileUrl" placeholder="https://..."></div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="matSubmit" style="margin-top:6px;">Завантажити матеріал</button>
+      </div>
+      <div>
+        <div class="section-title">📚 Мої матеріали</div>
+        <div class="grid grid-2">
+          ${myMats.map(m=>`
+            <div class="card" style="padding:16px;">
+              <h4 style="font-size:14.5px;margin-bottom:5px;">${esc(m.title)}</h4>
+              <p class="muted" style="margin-bottom:8px;">${esc(m.desc)}</p>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;">${m.grade.map(g=>`<span class="badge">${g} кл.</span>`).join('')}</div>
+            </div>
+          `).join('') || `<p class="muted">Матеріалів ще немає</p>`}
+        </div>
+      </div>
+    </div>
+  `;
+
+  $all('.grade-pick-chip', c).forEach(chip=>{
+    const cb = chip.querySelector('input');
+    cb.addEventListener('change', ()=>{
+      chip.style.borderColor = cb.checked ? 'var(--primary)' : 'var(--border)';
+      chip.style.background = cb.checked ? 'var(--primary-light)' : '';
+      chip.style.color = cb.checked ? 'var(--primary)' : 'var(--text-light)';
+    });
+  });
+
+  let uploadMode = 'file';
+  let uploadedFileData = null, uploadedFileName = null;
+  $('#matTabUpload').onclick = ()=>{
+    uploadMode='file';
+    $('#matTabUpload').classList.add('active'); $('#matTabLink').classList.remove('active');
+    $('#matUploadBlock').classList.remove('hidden'); $('#matLinkBlock').classList.add('hidden');
+  };
+  $('#matTabLink').onclick = ()=>{
+    uploadMode='link';
+    $('#matTabLink').classList.add('active'); $('#matTabUpload').classList.remove('active');
+    $('#matLinkBlock').classList.remove('hidden'); $('#matUploadBlock').classList.add('hidden');
+  };
+  $('#matFileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 5*1024*1024){ toast('Файл завеликий (макс. 5 МБ)', 'error'); e.target.value=''; return; }
+    const reader = new FileReader();
+    reader.onloadend = ()=>{
+      uploadedFileData = reader.result;
+      uploadedFileName = file.name;
+      $('#matFileStatus').textContent = `✅ Готово до завантаження: ${file.name} (${Math.round(file.size/1024)} КБ)`;
+      $('#matFileStatus').style.color = 'var(--accent-dark)';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('#matSubmit').onclick = ()=>{
+    const title = $('#matTitle').value.trim();
+    const desc = $('#matDesc').value.trim();
+    const grades = $all('.matGrade', c).filter(ch=>ch.checked).map(ch=>parseInt(ch.value));
+    if(!title || !grades.length){ toast('Заповніть назву та оберіть хоча б один клас', 'error'); return; }
+
+    let fileName, fileUrl;
+    if(uploadMode==='file'){
+      if(!uploadedFileData){ toast('Оберіть файл для завантаження', 'error'); return; }
+      fileName = uploadedFileName;
+      fileUrl = uploadedFileData; // base64 data URL, works as a downloadable href
+    } else {
+      fileName = $('#matFileName').value.trim();
+      fileUrl = $('#matFileUrl').value.trim();
+      if(!fileName || !fileUrl){ toast('Вкажіть назву файлу та URL', 'error'); return; }
+    }
+
+    DB.materials.push({id:uid(), title, desc, grade:grades, fileName, fileUrl, teacherId:u.id, uploadedAt:new Date().toISOString().slice(0,10)});
+    toast('Матеріал завантажено!', 'success');
+    renderPageContent('add_material');
+  };
+}
+
+function renderTeacherPayouts(c){
+  const u = STATE.currentUser;
+  const payouts = u.payouts || [];
+  const totalPaid = payouts.filter(p=>p.status==='paid').reduce((a,b)=>a+b.amount,0);
+  const students = getStudentsOf(u.id);
+  c.innerHTML = `
+    <div class="grid grid-2" style="margin-bottom:18px;">
+      <div class="card stat-card">
+        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">💰</div>
+        <div><div class="stat-val">${fmtMoney(totalPaid)}</div><div class="stat-lbl">Виплачено всього</div></div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">⏳</div>
+        <div><div class="stat-val">${payouts.filter(p=>p.status==='pending').length}</div><div class="stat-lbl">Очікують виплати</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">🎒 Мої учні — оплати та залишок занять</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Учень</th><th>Тариф</th><th>Сплачено всього</th><th>Пройдено</th><th>Залишилось занять</th></tr></thead>
+        <tbody>
+          ${students.map(s=>{
+            const paidTotal = DB.payments.filter(p=>p.studentId===s.id && p.status==='confirmed').reduce((a,b)=>a+b.amount,0);
+            const used = planUsedLessons(s), remaining = planRemainingLessons(s);
+            return `<tr>
+              <td><b>${esc(s.name)}</b> <span class="muted">(${s.grade} кл.)</span></td>
+              <td>${s.plan?esc(s.plan.label):(s.trialUsed?'Разово':'Пробний')}</td>
+              <td>${fmtMoney(paidTotal)}</td>
+              <td>${used}</td>
+              <td>${remaining>0?`<span class="badge badge-accent">${remaining} занять</span>`:'<span class="badge badge-warn">тариф завершується</span>'}</td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">💰 Історія виплат</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Уроків</th><th>Сума</th><th>Статус</th></tr></thead>
+        <tbody>
+          ${payouts.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${p.lessons}</td><td>${fmtMoney(p.amount)}</td>
+            <td>${p.status==='paid'?'<span class="badge badge-accent">Виплачено</span>':'<span class="badge badge-warn">Очікується</span>'}</td></tr>`).join('')
+            || `<tr><td colspan="4" class="muted" style="text-align:center;">Виплат ще не було</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   СПІЛЬНЕ: ПОВІДОМЛЕННЯ / СПОВІЩЕННЯ / ТАРИФИ
+   ============================================================ */
+function sendMessage(fromId, toId, text){
+  const msg = {id:uid(), fromId, toId, text, date:new Date().toISOString(), read:false};
+  DB.messages.push(msg);
+  addNotification(toId, `Нове повідомлення від ${esc(getUserById(fromId)?.name||'')}`, 'message');
+  // Persist to backend async
+  if(API_MODE) DataLayer.sendMsg(fromId, toId, text).catch(()=>{});
+  return msg;
+}
+function getConversation(userA, userB){
+  return DB.messages.filter(m=>(m.fromId===userA && m.toId===userB) || (m.fromId===userB && m.toId===userA))
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+}
+function unreadCountFor(userId, fromId){
+  return DB.messages.filter(m=>m.toId===userId && (!fromId || m.fromId===fromId) && !m.read).length;
+}
+function markConversationRead(userId, otherId){
+  DB.messages.forEach(m=>{ if(m.toId===userId && m.fromId===otherId) m.read=true; });
+}
+function addNotification(userId, text, type='info'){
+  DB.notifications.push({id:uid(), userId, text, date:new Date().toISOString(), read:false, type});
+}
+function unreadNotifCount(userId){
+  return DB.notifications.filter(n=>n.userId===userId && !n.read).length;
+}
+
+function planTotalLessons(student){
+  if(!student.plan) return student.trialUsed ? 0 : 1; // single trial slot
+  return student.plan.totalLessons || 0;
+}
+function planUsedLessons(student){
+  return DB.lessons.filter(l=>l.studentId===student.id && l.status==='completed').length;
+}
+function planRemainingLessons(student){
+  if(!student.plan) return 0;
+  const total = student.plan.totalLessons || 0;
+  const used = planUsedLessons(student);
+  return Math.max(0, total - used);
+}
+
+/* Universal chat widget opener: open conversation modal between currentUser-as-admin/teacher and target */
+function openChatModal(otherId, opts={}){
+  const me = STATE.currentUser;
+  const other = getUserById(otherId);
+  if(!other) return;
+  markConversationRead(me.id, otherId);
+  const renderThread = ()=>{
+    const msgs = getConversation(me.id, otherId);
+    return msgs.map(m=>`
+      <div style="display:flex;${m.fromId===me.id?'justify-content:flex-end;':''}margin-bottom:10px;">
+        <div style="max-width:78%;background:${m.fromId===me.id?'var(--primary)':'var(--bg)'};color:${m.fromId===me.id?'#fff':'var(--text)'};padding:10px 14px;border-radius:14px;${m.fromId===me.id?'border-bottom-right-radius:4px;':'border-bottom-left-radius:4px;'}">
+          <div style="font-size:13.5px;line-height:1.5;">${esc(m.text)}</div>
+          <div style="font-size:10.5px;opacity:.7;margin-top:4px;">${new Date(m.date).toLocaleString('uk-UA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+    `).join('') || `<p class="muted" style="text-align:center;padding:20px;">Повідомлень ще немає</p>`;
+  };
+  const m = openModal(`
+    <div class="modal-box wide" style="max-width:520px;">
+      <div class="modal-head">
+        <h3>💬 ${esc(other.name)}</h3>
+        <div class="modal-close" onclick="closeModal()">✕</div>
+      </div>
+      <div class="modal-body" id="chatThread" style="max-height:420px;overflow-y:auto;">${renderThread()}</div>
+      ${opts.paymentConfirm ? `
+      <div class="modal-foot" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm btn-accent" id="confirmPayBtn">✅ Підтвердити оплату</button>
+          <button class="btn btn-sm btn-danger" id="rejectPayBtn">❌ Відхилити</button>
+        </div>
+      </div>` : ''}
+      <div class="modal-foot">
+        <input type="text" id="chatInput" placeholder="Напишіть повідомлення..." style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;">
+        <button class="btn btn-primary" id="chatSendBtn">Надіслати</button>
+      </div>
+    </div>
+  `, {persistent:true});
+
+  const scrollDown = ()=>{ const t = $('#chatThread'); if(t) t.scrollTop = t.scrollHeight; };
+  scrollDown();
+
+  $('#chatSendBtn').onclick = ()=>{
+    const inp = $('#chatInput');
+    const text = inp.value.trim();
+    if(!text) return;
+    sendMessage(me.id, otherId, text);
+    inp.value = '';
+    $('#chatThread').innerHTML = renderThread();
+    scrollDown();
+    renderApp(); // refresh badges
+  };
+  $('#chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#chatSendBtn').click(); });
+
+  if(opts.paymentConfirm){
+    $('#confirmPayBtn').onclick = ()=>{
+      opts.paymentConfirm.status = 'confirmed';
+      sendMessage(me.id, otherId, `✅ Вашу оплату "${opts.paymentConfirm.desc}" на суму ${fmtMoney(opts.paymentConfirm.amount)} підтверджено.`);
+      toast('Оплату підтверджено', 'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    };
+    $('#rejectPayBtn').onclick = ()=>{
+      opts.paymentConfirm.status = 'rejected';
+      sendMessage(me.id, otherId, `⚠️ Виникло питання щодо оплати "${opts.paymentConfirm.desc}" на суму ${fmtMoney(opts.paymentConfirm.amount)}. Будь ласка, зв'яжіться з нами.`);
+      toast('Позначено як проблемну оплату', 'info');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    };
+  }
+}
+
+/* ============================================================
+   РОЛЬ: АДМІН
+   ============================================================ */
+function renderAdminHome(c){
+  const students = DB.users.filter(u=>u.role==='student');
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  const totalRevenue = DB.payments.reduce((a,b)=>a+b.amount,0);
+  const totalLessons = DB.lessons.length;
+  const completedLessons = DB.lessons.filter(l=>l.status==='completed').length;
+
+  c.innerHTML = `
+    <div class="grid grid-4" style="margin-bottom:22px;">
+      <div class="card card-hover stat-card" style="cursor:pointer;" id="goStudentsCard">
+        <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">🎒</div>
+        <div><div class="stat-val">${students.length}</div><div class="stat-lbl">Учнів</div></div>
+      </div>
+      <div class="card card-hover stat-card" style="cursor:pointer;" id="goTeachersCard">
+        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">🍎</div>
+        <div><div class="stat-val">${teachers.length}</div><div class="stat-lbl">Вчителів</div></div>
+      </div>
+      <div class="card card-hover stat-card" style="cursor:pointer;" id="goScheduleCard">
+        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">📅</div>
+        <div><div class="stat-val">${completedLessons}/${totalLessons}</div><div class="stat-lbl">Уроків проведено</div></div>
+      </div>
+      <div class="card card-hover stat-card" style="cursor:pointer;" id="goRevenueCard">
+        <div class="stat-ico" style="background:#FFEAEC;color:var(--danger);">💰</div>
+        <div><div class="stat-val">${fmtMoney(totalRevenue)}</div><div class="stat-lbl">Загальний дохід (натисніть)</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div class="section-title" style="margin-bottom:0;">🎒 Усі учні школи</div>
+        <button class="btn btn-accent btn-sm" id="quickAddStudentBtn">➕ Додати учня</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ім'я</th><th>Клас</th><th>Вчитель</th><th>Тариф</th><th>Пройдено / Залишилось</th><th></th></tr></thead>
+        <tbody>
+          ${students.map(s=>{
+            const teacher = getUserById(s.teacherId);
+            const used = planUsedLessons(s), total = planTotalLessons(s);
+            return `<tr style="cursor:pointer;" onclick="openAdminStudentProfile('${s.id}')">
+              <td><b>${esc(s.name)}</b></td><td>${s.grade} клас</td><td>${teacher?esc(teacher.name):'—'}</td>
+              <td>${s.plan ? esc(s.plan.label) : (s.trialUsed?'Разово':'Пробний доступний')}</td>
+              <td>${used} / ${total||'—'}</td>
+              <td><span class="badge">Деталі →</span></td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📅 Уроки — хто, коли, з ким</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Час</th><th>Вчитель</th><th>Учень</th><th>Тема</th><th>Статус</th></tr></thead>
+        <tbody>
+          ${DB.lessons.slice().sort((a,b)=>new Date(b.date+'T'+b.time)-new Date(a.date+'T'+a.time)).slice(0,12).map(l=>{
+            const st = getUserById(l.studentId), t = getUserById(l.teacherId);
+            return `<tr>
+              <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${t?esc(t.name):'—'}</td><td>${st?esc(st.name):'—'}</td>
+              <td>${esc(l.subject)}</td>
+              <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Уроків ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+  $('#goStudentsCard').onclick = ()=>{ STATE.currentPage='admin_students'; renderApp(); };
+  $('#goTeachersCard').onclick = ()=>{ STATE.currentPage='admin_teachers'; renderApp(); };
+  $('#goScheduleCard').onclick = ()=>{ STATE.currentPage='admin_schedule'; renderApp(); };
+  $('#goRevenueCard').onclick = ()=>{ STATE.currentPage='admin_payments'; renderApp(); };
+  $('#quickAddStudentBtn').onclick = (e)=>{ e.stopPropagation(); openAdminAddStudentModal(); };
+}
+
+/* ---- Адмін: керування учнями (додавання/видалення/перегляд кабінету) ---- */
+function openAdminAddStudentModal(){
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>➕ Додати учня</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Повне ім'я учня</label><input id="newStName" placeholder="Ім'я Прізвище"></div>
+        <div class="field"><label>Email (необов'язково)</label><input id="newStEmail" type="email" placeholder="student@email.com"></div>
+        <div class="field-row">
+          <div class="field"><label>Клас</label>
+            <select id="newStGrade"><option value="1">1 клас</option><option value="2">2 клас</option><option value="3">3 клас</option><option value="4">4 клас</option></select>
+          </div>
+          <div class="field"><label>Вчитель</label>
+            <select id="newStTeacher">${teachers.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">Немає вчителів</option>'}</select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" id="createStudentBtn">Додати учня до школи</button>
+      </div>
+    </div>
+  `);
+  $('#createStudentBtn').onclick = ()=>{
+    const name = $('#newStName').value.trim();
+    const email = $('#newStEmail').value.trim().toLowerCase();
+    const grade = parseInt($('#newStGrade').value);
+    const teacherId = $('#newStTeacher').value || null;
+    if(!name){ toast('Введіть ім\'я учня', 'error'); return; }
+    if(email && DB.users.some(u=>u.email.toLowerCase()===email)){ toast('Такий email вже є в системі', 'error'); return; }
+    const id = uid();
+    DB.users.push({id, role:'student', name, email:email||'', password:'111111', grade, parentId:null, teacherId, balance:0, trialUsed:false, plan:null, emailVerified:true, addedByAdmin:true});
+    toast('Учня додано до школи', 'success');
+    closeModal();
+    renderPageContent(STATE.currentPage);
+  };
+}
+
+function deleteStudent(studentId){
+  const s = getUserById(studentId);
+  if(!s) return;
+  if(!confirm(`Видалити учня «${s.name}» зі школи? Усі його уроки, ДЗ та платежі залишаться в історії, але доступ буде закрито.`)) return;
+  DB.users = DB.users.filter(u=>u.id!==studentId);
+  toast('Учня видалено зі школи', 'success');
+  STATE.currentPage = 'admin_students';
+  renderApp();
+}
+
+function openAdminStudentProfile(studentId){
+  STATE.adminViewingStudent = studentId;
+  openModal(`<div class="modal-box wide" id="studentProfileModal" style="max-width:760px;"></div>`, {persistent:true});
+  renderAdminStudentProfileContent();
+}
+
+function renderAdminStudentProfileContent(){
+  const s = getUserById(STATE.adminViewingStudent);
+  if(!s){ closeModal(); return; }
+  const teacher = getUserById(s.teacherId);
+  const lessons = studentLessons(s.id);
+  const hw = studentHomework(s.id);
+  const payments = DB.payments.filter(p=>p.studentId===s.id);
+  const used = planUsedLessons(s), total = planTotalLessons(s), remaining = planRemainingLessons(s);
+  const teacherMsgs = teacher ? getConversation(s.id, teacher.id) : [];
+  const adminMsgs = getConversation(STATE.currentUser.id, s.id);
+
+  const box = $('#studentProfileModal');
+  box.innerHTML = `
+    <div class="modal-head">
+      <h3>🎒 ${esc(s.name)} — кабінет учня</h3>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="grid grid-3" style="margin-bottom:18px;">
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:4px;">Клас / Вчитель</div>
+          <b>${s.grade} клас · ${teacher?esc(teacher.name):'не призначено'}</b>
+        </div>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:4px;">Тариф</div>
+          <b>${s.plan ? esc(s.plan.label) : 'Без активного тарифу'}</b>
+        </div>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+          <div class="muted" style="margin-bottom:4px;">Пройдено / Залишилось</div>
+          <b>${used} / ${remaining} занять</b>
+        </div>
+      </div>
+
+      <div class="section-title" style="font-size:15px;">📅 Історія уроків (${lessons.length})</div>
+      <div class="table-wrap" style="margin-bottom:18px;"><table>
+        <thead><tr><th>Дата</th><th>Тема</th><th>Статус</th></tr></thead>
+        <tbody>${lessons.map(l=>`<tr><td>${fmtDate(l.date)} ${l.time}</td><td>${esc(l.subject)}</td><td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td></tr>`).join('') || `<tr><td colspan="3" class="muted" style="text-align:center;">Немає уроків</td></tr>`}</tbody>
+      </table></div>
+
+      <div class="section-title" style="font-size:15px;">📝 Прогрес ДЗ (${hw.filter(h=>h.done).length}/${hw.length} виконано)</div>
+      <div style="margin-bottom:18px;">
+        ${hw.map(h=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;">
+          <span>${esc(h.title)}</span>
+          <span>${h.done?`<span class="badge badge-accent">Виконано${h.grade!=null?' · '+h.grade+'/12':''}</span>`:'<span class="badge badge-warn">Очікує</span>'}</span>
+        </div>`).join('') || `<p class="muted">ДЗ ще не видавались</p>`}
+      </div>
+
+      <div class="section-title" style="font-size:15px;">💳 Платежі (${payments.length})</div>
+      <div style="margin-bottom:18px;">
+        ${payments.map(p=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;">
+          <span>${fmtDate(p.date)} — ${esc(p.desc)}</span><b>${fmtMoney(p.amount)}</b>
+        </div>`).join('') || `<p class="muted">Платежів ще не було</p>`}
+      </div>
+
+      ${teacher ? `
+      <div class="section-title" style="font-size:15px;">💬 Переписка з вчителем (${esc(teacher.name)})</div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px;max-height:180px;overflow-y:auto;margin-bottom:18px;">
+        ${teacherMsgs.map(m=>`<div style="margin-bottom:8px;font-size:13px;"><b>${m.fromId===teacher.id?esc(teacher.name):esc(s.name)}:</b> ${esc(m.text)}</div>`).join('') || `<p class="muted">Листування ще немає</p>`}
+      </div>` : ''}
+
+      <div class="section-title" style="font-size:15px;">💬 Ваше листування з учнем</div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px;max-height:160px;overflow-y:auto;margin-bottom:14px;" id="adminStudentChatThread">
+        ${adminMsgs.map(m=>`<div style="margin-bottom:8px;font-size:13px;"><b>${m.fromId===STATE.currentUser.id?'Ви':esc(s.name)}:</b> ${esc(m.text)}</div>`).join('') || `<p class="muted">Напишіть учню повідомлення нижче</p>`}
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <input type="text" id="adminStudentChatInput" placeholder="Написати учню..." style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;">
+        <button class="btn btn-primary btn-sm" id="adminStudentChatSend">Надіслати</button>
+      </div>
+
+      <button class="btn btn-danger btn-block" onclick="closeModal(); deleteStudent('${s.id}');">🗑️ Видалити учня зі школи</button>
+    </div>
+  `;
+  $('#adminStudentChatSend').onclick = ()=>{
+    const inp = $('#adminStudentChatInput');
+    const text = inp.value.trim();
+    if(!text) return;
+    sendMessage(STATE.currentUser.id, s.id, text);
+    inp.value = '';
+    renderAdminStudentProfileContent();
+  };
+  const chatInput = $('#adminStudentChatInput');
+  if(chatInput) chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') $('#adminStudentChatSend').click(); });
+}
+
+function renderAdminStudents(c){
+  const students = DB.users.filter(u=>u.role==='student');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-accent btn-sm" id="addStudentBtn2">➕ Додати учня</button>
+    </div>
+    <div class="card">
+      <div class="section-title">🎒 Усі учні (${students.length})</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ім'я</th><th>Клас</th><th>Вчитель</th><th>Тариф</th><th>Пройдено/Залишилось</th><th>Дії</th></tr></thead>
+        <tbody>
+          ${students.map(s=>{
+            const teacher = getUserById(s.teacherId);
+            const used = planUsedLessons(s), total = planTotalLessons(s), remaining = planRemainingLessons(s);
+            return `<tr>
+              <td style="cursor:pointer;" onclick="openAdminStudentProfile('${s.id}')"><b>${esc(s.name)}</b></td>
+              <td>${s.grade} клас</td><td>${teacher?esc(teacher.name):'—'}</td>
+              <td>${s.plan ? esc(s.plan.label) : (s.trialUsed?'Разово':'Пробний доступний')}</td>
+              <td>${used} пройдено / ${remaining} залишилось</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-outline" onclick="openAdminStudentProfile('${s.id}')">👁️ Кабінет</button>
+                  <button class="btn btn-sm btn-outline" onclick="openChatModal('${s.id}')">💬</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.id}')">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+  $('#addStudentBtn2').onclick = openAdminAddStudentModal;
+}
+
+/* ---- Адмін: вчителі ---- */
+function openAdminAddTeacherModal(){
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>➕ Додати вчителя</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Повне ім'я вчителя</label><input id="newTName" placeholder="Ім'я Прізвище"></div>
+        <div class="field"><label>Email</label><input id="newTEmail" type="email" placeholder="teacher@email.com"></div>
+        <div class="field"><label>Предмет/спеціалізація</label><input id="newTSubject" placeholder="Математика" value="Математика"></div>
+        <div class="field"><label>Тимчасовий пароль</label><input id="newTPass" placeholder="Мінімум 6 символів" value="111111"></div>
+        <button class="btn btn-primary btn-block" id="createTeacherBtn">Додати вчителя</button>
+      </div>
+    </div>
+  `);
+  $('#createTeacherBtn').onclick = async ()=>{
+    const name = $('#newTName').value.trim();
+    const email = $('#newTEmail').value.trim().toLowerCase();
+    const subject = $('#newTSubject').value.trim() || 'Математика';
+    const pass = $('#newTPass').value || '111111';
+    if(!name || !email){ toast('Заповніть ім\'я та email', 'error'); return; }
+    if(DB.users.some(u=>u.email && u.email.toLowerCase()===email)){ toast('Такий email вже є в системі', 'error'); return; }
+    try {
+      const resp = await DataLayer.adminCreateUser({role:'teacher', name, email, password:pass, subject});
+      toast(`Вчителя додано. Пароль: ${resp.tempPassword || pass}`, 'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e) { toast(e.message || 'Помилка', 'error'); }
+  };
+}
+
+async function deleteTeacher(teacherId){
+  const t = getUserById(teacherId);
+  if(!t) return;
+  const studentsCount = getStudentsOf(teacherId).length;
+  if(studentsCount>0){ toast(`Спочатку перепризначте ${studentsCount} учнів цього вчителя іншому вчителю`, 'error'); return; }
+  if(!confirm(`Видалити вчителя «${t.name}»?`)) return;
+  try {
+    await DataLayer.deleteUser(teacherId);
+    toast('Вчителя видалено', 'success');
+    renderPageContent(STATE.currentPage);
+  } catch(e) { toast(e.message || 'Помилка видалення', 'error'); }
+}
+
+function renderAdminTeachers(c){
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-accent btn-sm" id="addTeacherBtn">➕ Додати вчителя</button>
+    </div>
+    <div class="grid grid-2" id="teachersGrid"></div>
+  `;
+  $('#addTeacherBtn').onclick = openAdminAddTeacherModal;
+  const grid = $('#teachersGrid');
+  grid.innerHTML = teachers.map(t=>{
+    const students = getStudentsOf(t.id);
+    const totalPaid = (t.payouts||[]).filter(p=>p.status==='paid').reduce((a,b)=>a+b.amount,0);
+    const lessonsCount = DB.lessons.filter(l=>l.teacherId===t.id).length;
+    return `<div class="card card-hover" style="cursor:pointer;" onclick="openTeacherProfile('${t.id}')">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(t.name)}</div>
+        <div><h3 style="font-size:16px;">${esc(t.name)}</h3><span class="muted">${esc(t.subject||'')}</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <span class="badge">🎒 ${students.length} учнів</span>
+        <span class="badge">📅 ${lessonsCount} уроків</span>
+        <span class="badge badge-accent">💰 ${fmtMoney(totalPaid)}</span>
+      </div>
+      <div style="display:flex;gap:8px;" onclick="event.stopPropagation();">
+        <button class="btn btn-sm btn-outline" style="flex:1;" onclick="openTeacherProfile('${t.id}')">📋 План роботи</button>
+        <button class="btn btn-sm btn-outline" onclick="openChatModal('${t.id}')">💬</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTeacher('${t.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('') || `<div class="empty-state"><div class="ei">🍎</div><p>Вчителів ще немає</p></div>`;
+}
+
+function openTeacherProfile(teacherId){
+  const t = getUserById(teacherId);
+  if(!t) return;
+  const students = getStudentsOf(t.id);
+  const lessons = DB.lessons.filter(l=>l.teacherId===t.id).sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  const upcoming = lessons.filter(l=>l.status==='planned');
+  const completed = lessons.filter(l=>l.status==='completed');
+  const totalPaid = (t.payouts||[]).filter(p=>p.status==='paid').reduce((a,b)=>a+b.amount,0);
+  const totalPending = (t.payouts||[]).filter(p=>p.status==='pending').reduce((a,b)=>a+b.amount,0);
+  // revenue brought to school = sum of payments made by his students
+  const studentIds = students.map(s=>s.id);
+  const revenueBrought = DB.payments.filter(p=>studentIds.includes(p.studentId)).reduce((a,b)=>a+b.amount,0);
+
+  openModal(`
+    <div class="modal-box wide" style="max-width:760px;">
+      <div class="modal-head"><h3>🍎 ${esc(t.name)} — план роботи</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="grid grid-3" style="margin-bottom:18px;">
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Учнів</div><b style="font-size:20px;">${students.length}</b>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Заплановано / Проведено уроків</div><b style="font-size:20px;">${upcoming.length} / ${completed.length}</b>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Принесено школі</div><b style="font-size:20px;color:var(--primary);">${fmtMoney(revenueBrought)}</b>
+          </div>
+        </div>
+
+        <div class="section-title" style="font-size:15px;">🎒 Учні вчителя</div>
+        <div style="margin-bottom:18px;">
+          ${students.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;">
+            <span>${esc(s.name)} (${s.grade} кл.)</span><span class="muted">${s.plan?esc(s.plan.label):'без тарифу'}</span>
+          </div>`).join('') || `<p class="muted">Учнів ще немає</p>`}
+        </div>
+
+        <div class="section-title" style="font-size:15px;">📅 Графік роботи (найближчі уроки)</div>
+        <div class="table-wrap" style="margin-bottom:18px;"><table>
+          <thead><tr><th>Дата</th><th>Час</th><th>Учень</th><th>Тема</th><th>Статус</th></tr></thead>
+          <tbody>
+            ${lessons.slice(0,15).map(l=>{
+              const st = getUserById(l.studentId);
+              return `<tr><td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${st?esc(st.name):'—'}</td><td>${esc(l.subject)}</td>
+                <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td></tr>`;
+            }).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Уроків ще немає</td></tr>`}
+          </tbody>
+        </table></div>
+
+        <div class="section-title" style="font-size:15px;">💰 Фінанси вчителя</div>
+        <div class="grid grid-2" style="margin-bottom:18px;">
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Виплачено</div><b style="color:var(--accent-dark);">${fmtMoney(totalPaid)}</b>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Очікує виплати</div><b style="color:var(--warning);">${fmtMoney(totalPending)}</b>
+          </div>
+        </div>
+
+        <button class="btn btn-outline btn-block" onclick="closeModal(); openChatModal('${t.id}');">💬 Написати вчителю</button>
+      </div>
+    </div>
+  `);
+}
+
+/* ---- Адмін: розклад з CRUD + сповіщення вчителю при зміні ---- */
+function renderAdminSchedule(c){
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  const students = DB.users.filter(u=>u.role==='student');
+  const lessons = DB.lessons.slice().sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div class="section-title" style="margin-bottom:0;">📅 Управління розкладом</div>
+        <button class="btn btn-accent btn-sm" id="adminAddLessonBtn">➕ Додати урок</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Час</th><th>Вчитель</th><th>Учень</th><th>Тема</th><th>Статус</th><th>Дії</th></tr></thead>
+        <tbody>
+          ${lessons.map(l=>{
+            const st = getUserById(l.studentId), t = getUserById(l.teacherId);
+            return `<tr>
+              <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${t?esc(t.name):'—'}</td><td>${st?esc(st.name):'—'}</td>
+              <td>${esc(l.subject)}</td>
+              <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-outline" onclick="openEditLessonModal('${l.id}')">✏️</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteLesson('${l.id}')">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="7" class="muted" style="text-align:center;">Уроків ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+  $('#adminAddLessonBtn').onclick = ()=>openEditLessonModal(null);
+}
+
+function openEditLessonModal(lessonId){
+  const l = lessonId ? DB.lessons.find(x=>x.id===lessonId) : null;
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  const students = DB.users.filter(u=>u.role==='student');
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>${l?'✏️ Редагувати урок':'➕ Новий урок'}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Вчитель</label>
+          <select id="elTeacher">${teachers.map(t=>`<option value="${t.id}" ${l&&l.teacherId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Учень</label>
+          <select id="elStudent">${students.map(s=>`<option value="${s.id}" ${l&&l.studentId===s.id?'selected':''}>${esc(s.name)} (${s.grade} кл.)</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Тема уроку</label><input id="elSubject" value="${l?esc(l.subject):''}" placeholder="Тема уроку"></div>
+        <div class="field-row">
+          <div class="field"><label>Дата</label><input type="date" id="elDate" value="${l?l.date:new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>Час</label><input type="time" id="elTime" value="${l?l.time:'15:00'}"></div>
+        </div>
+        <div class="field"><label>Посилання Google Meet</label><input id="elMeet" value="${l?esc(l.meetUrl):'https://meet.google.com/new-lesson'}"></div>
+        ${l ? `<div class="field"><label>Статус</label><select id="elStatus"><option value="planned" ${l.status==='planned'?'selected':''}>Заплановано</option><option value="completed" ${l.status==='completed'?'selected':''}>Проведено</option></select></div>` : ''}
+        <button class="btn btn-primary btn-block" id="saveLessonBtn">${l?'Зберегти зміни':'Створити урок'}</button>
+      </div>
+    </div>
+  `);
+  $('#saveLessonBtn').onclick = ()=>{
+    const teacherId = $('#elTeacher').value;
+    const studentId = $('#elStudent').value;
+    const subject = $('#elSubject').value.trim();
+    const date = $('#elDate').value;
+    const time = $('#elTime').value;
+    const meetUrl = $('#elMeet').value.trim() || 'https://meet.google.com/new-lesson';
+    if(!subject || !date || !time){ toast('Заповніть усі поля', 'error'); return; }
+    if(l){
+      const changed = l.teacherId!==teacherId || l.date!==date || l.time!==time;
+      Object.assign(l, {teacherId, studentId, subject, date, time, meetUrl, status: $('#elStatus') ? $('#elStatus').value : l.status});
+      if(changed){ addNotification(teacherId, `Розклад змінено: урок "${subject}" тепер ${fmtDate(date)} о ${time}`, 'schedule'); }
+      toast('Урок оновлено', 'success');
+    } else {
+      DB.lessons.push({id:uid(), studentId, teacherId, subject, date, time, status:'planned', meetUrl});
+      addNotification(teacherId, `Новий урок у розкладі: "${subject}" — ${fmtDate(date)} о ${time}`, 'schedule');
+      toast('Урок створено', 'success');
+    }
+    closeModal();
+    renderPageContent('admin_schedule');
+  };
+}
+
+function deleteLesson(lessonId){
+  const l = DB.lessons.find(x=>x.id===lessonId);
+  if(!l) return;
+  if(!confirm('Видалити цей урок з розкладу?')) return;
+  addNotification(l.teacherId, `Урок "${l.subject}" (${fmtDate(l.date)} о ${l.time}) скасовано адміністратором`, 'schedule');
+  DB.lessons = DB.lessons.filter(x=>x.id!==lessonId);
+  toast('Урок видалено', 'success');
+  renderPageContent('admin_schedule');
+}
+
+/* ---- Адмін: оплати з історією та чатом підтвердження ---- */
+function renderAdminPayments(c){
+  const totalRevenue = DB.payments.reduce((a,b)=>a+b.amount,0);
+  c.innerHTML = `
+    <div class="card stat-card" style="margin-bottom:18px;max-width:340px;">
+      <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">💰</div>
+      <div><div class="stat-val">${fmtMoney(totalRevenue)}</div><div class="stat-lbl">Загальний дохід платформи</div></div>
+    </div>
+    <div class="card">
+      <div class="section-title">💳 Усі платежі — натисніть на ім'я, щоб написати клієнту</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Платник</th><th>Учень</th><th>Опис</th><th>Сума</th><th>Статус</th></tr></thead>
+        <tbody>
+          ${DB.payments.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(p=>{
+            const st = getUserById(p.studentId);
+            const payer = p.parentId ? getUserById(p.parentId) : st;
+            const statusBadge = p.status==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
+              : p.status==='rejected' ? '<span class="badge badge-danger">Проблема</span>'
+              : '<span class="badge badge-warn">Очікує підтвердження</span>';
+            return `<tr>
+              <td>${fmtDate(p.date)}</td>
+              <td style="cursor:pointer;color:var(--primary);font-weight:700;" onclick="openPaymentChat('${p.id}')">${payer?esc(payer.name):'—'}</td>
+              <td>${st?esc(st.name):'—'}</td><td>${esc(p.desc)}</td><td>${fmtMoney(p.amount)}</td>
+              <td>${statusBadge}</td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+function openPaymentChat(paymentId){
+  const p = DB.payments.find(x=>x.id===paymentId);
+  if(!p) return;
+  const payerId = p.parentId || p.studentId;
+  openChatModal(payerId, {paymentConfirm:p});
+}
+
+/* ============================================================
+   ІГРОВИЙ КОНТЕНТ — генератори завдань за програмою НУШ
+   Класи: 1 (числа 1-10, +/-), 2 (1-20, +/-, ×2-5), 3 (1-100, всі дії), 4 (1-1000, дроби, від'ємні)
+   ============================================================ */
+const GRADE_RANGES = {
+  1: {max:10, ops:['+','-'], mulTabs:[], allowFrac:false, allowNeg:false},
+  2: {max:20, ops:['+','-','×'], mulTabs:[2,3,4,5], allowFrac:false, allowNeg:false},
+  3: {max:100, ops:['+','-','×','÷'], mulTabs:[2,3,4,5,6,7,8,9,10], allowFrac:false, allowNeg:false},
+  4: {max:1000, ops:['+','-','×','÷'], mulTabs:[2,3,4,5,6,7,8,9,10,11,12], allowFrac:true, allowNeg:true},
+};
+const EMOJI_SET = ['🍎','🍌','🍓','⭐','🐝','🦋','🌸','🍪','⚽','🎈','🐟','🍇','🚗','🎲','🧩','🍉'];
+
+function genArithmeticProblem(grade){
+  const r = GRADE_RANGES[grade];
+  const op = pick(r.ops);
+  let a,b,answer,text;
+  if(op==='+'){
+    a = rnd(1, r.max-1); b = rnd(1, r.max-a);
+    answer = a+b; text = `${a} + ${b} = ?`;
+  } else if(op==='-'){
+    a = rnd(grade===1?2:5, r.max); b = rnd(1,a);
+    answer = a-b; text = `${a} − ${b} = ?`;
+  } else if(op==='×'){
+    const tab = pick(r.mulTabs.length?r.mulTabs:[2,3]);
+    const mul = rnd(1, grade<=2?10:12);
+    a = tab; b = mul; answer = a*b; text = `${a} × ${b} = ?`;
+  } else { // ÷
+    const tab = pick(r.mulTabs.length?r.mulTabs:[2,3]);
+    const mul = rnd(1, grade<=2?10:12);
+    answer = mul; a = tab*mul; b = tab; text = `${a} : ${b} = ?`;
+  }
+  if(grade===4 && r.allowNeg && Math.random()<0.25 && op!=='×' && op!=='÷'){
+    // negative result occasionally
+    a = rnd(1,30); b = rnd(a+1, a+30);
+    answer = a-b; text = `${a} − ${b} = ?`;
+  }
+  return {text, answer, op};
+}
+
+function genFractionProblem(){
+  // 4th grade fractions (intro level)
+  const den = pick([2,3,4,5,6,8,10]);
+  const num = rnd(1, den-1);
+  const type = pick(['identify','compare','simple_add']);
+  if(type==='compare'){
+    const num2 = rnd(1, den-1);
+    let answer = num===num2 ? '=' : (num>num2 ? '>' : '<');
+    return {text:`Порівняй: ${num}/${den} ___ ${num2}/${den}`, answer, type:'compare', a:`${num}/${den}`, b:`${num2}/${den}`};
+  }
+  if(type==='simple_add' && den<=6){
+    const num2 = rnd(1, den-num);
+    return {text:`${num}/${den} + ${num2}/${den} = ?/${den}`, answer:(num+num2), type:'fracAdd'};
+  }
+  return {text:`Яка частина зафарбована, якщо ціле поділено на ${den} рівних частин і взято ${num}?`, answer:`${num}/${den}`, type:'identify', num, den};
+}
+
+function genCompareNumbers(grade){
+  const r = GRADE_RANGES[grade];
+  let a = rnd(1, r.max), b = rnd(1, r.max);
+  if(grade>=4 && Math.random()<0.3){ a = -rnd(1,50); b = rnd(1,50); }
+  const answer = a===b ? '=' : (a>b ? '>' : '<');
+  return {a, b, answer};
+}
+
+function genNumlinePosition(grade){
+  const r = GRADE_RANGES[grade];
+  const lineMax = grade===1?10: grade===2?20: grade===3?100:1000;
+  const step = lineMax<=20?1: lineMax<=100?10:100;
+  const value = Math.round(rnd(0, lineMax)/step)*step;
+  return {value, lineMax, step};
+}
+
+function pluralSides(n){
+  const n10 = n%10, n100 = n%100;
+  if(n100>=11 && n100<=14) return 'сторін';
+  if(n10===1) return 'сторона';
+  if(n10>=2 && n10<=4) return 'сторони';
+  return 'сторін';
+}
+function genGeometryQuestion(grade){
+  const shapes = [
+    {name:'трикутник', emoji:'🔺', sides:3},
+    {name:'квадрат', emoji:'🟥', sides:4},
+    {name:'коло', emoji:'⚪', sides:0},
+    {name:'прямокутник', emoji:'▭', sides:4},
+    {name:'п\'ятикутник', emoji:'⬠', sides:5},
+    {name:'овал', emoji:'🥚', sides:0},
+  ];
+  if(grade<=2){
+    const shape = pick(shapes.slice(0,4));
+    return {type:'identify', shape, text:`Скільки сторін має ${shape.name}?`, answer: shape.sides};
+  } else {
+    // perimeter/area-lite for 3-4 grade
+    const w = rnd(3, grade===3?12:30), h = rnd(3, grade===3?12:30);
+    const type = pick(['perimeter','area']);
+    if(type==='perimeter'){
+      return {type:'perimeter', w, h, text:`Прямокутник зі сторонами ${w} см і ${h} см. Знайди периметр.`, answer:2*(w+h)};
+    }
+    return {type:'area', w, h, text:`Прямокутник зі сторонами ${w} см і ${h} см. Знайди площу.`, answer:w*h};
+  }
+}
+
+function genMultTable(grade){
+  const r = GRADE_RANGES[grade];
+  const tabs = r.mulTabs.length ? r.mulTabs : [2,3];
+  const a = pick(tabs);
+  const b = rnd(1, grade<=2?10:12);
+  return {a, b, answer:a*b, text:`${a} × ${b} = ?`};
+}
+
+function wrongAnswersNear(correct, count=3, spread=10){
+  const set = new Set([correct]);
+  let tries = 0;
+  while(set.size < count+1 && tries<50){
+    tries++;
+    const delta = rnd(-spread, spread);
+    const v = correct + (delta===0?1:delta);
+    if(v>=0 || correct<0) set.add(v);
+  }
+  while(set.size < count+1){ set.add(correct + set.size*3 + 1); }
+  set.delete(correct);
+  return shuffle(Array.from(set)).slice(0,count);
+}
+
+/* ============================================================
+   КАТАЛОГ 80 ІГОР: 4 теми × 20 ігор
+   ============================================================ */
+const TOPICS = {
+  arithmetic: {label:'Арифметика', icon:'➕', color:'#5B4FD9', desc:'Додавання, віднімання, множення, ділення'},
+  geometry:   {label:'Геометрія', icon:'🔺', desc:'Фігури, периметр, площа', color:'#22C98E'},
+  numline:    {label:'Числова пряма', icon:'📏', desc:'Порівняння, порядок, координати', color:'#F5A623'},
+  multtable:  {label:'Таблиця множення', icon:'✖️', desc:'Тренування таблиці множення', color:'#E84855'},
+};
+
+const MECHANICS = ['quiz4','trueFalse','flashCard','fillBlank','speedQuiz','matchPairs','sortGroups','sequence','countEmoji','compare','numline','balloons'];
+const MECHANIC_LABELS = {
+  quiz4:'Вікторина', trueFalse:'Так/Ні', flashCard:'Картки', fillBlank:'Введи відповідь',
+  speedQuiz:'На швидкість', matchPairs:'З\'єднай пари', sortGroups:'Сортування', sequence:'Послідовність',
+  countEmoji:'Порахуй', compare:'Порівняй', numline:'Числова пряма', balloons:'Кульки',
+};
+const MECHANIC_ICONS = {
+  quiz4:'🧠', trueFalse:'✅', flashCard:'🃏', fillBlank:'✍️', speedQuiz:'⏱️', matchPairs:'🔗',
+  sortGroups:'🗂️', sequence:'🔢', countEmoji:'🔍', compare:'⚖️', numline:'📏', balloons:'🎈',
+};
+
+function buildGameCatalog(){
+  const list = [];
+  Object.keys(TOPICS).forEach(topicKey=>{
+    for(let i=0;i<20;i++){
+      const mechanic = MECHANICS[i % MECHANICS.length];
+      // assign grade levels — distribute across 1-4, with topic-aware constraints
+      let grade;
+      if(topicKey==='multtable') grade = pick([2,3,4]); // multiplication starts grade 2
+      else grade = pick([1,2,3,4]);
+      const variantNum = Math.floor(i / MECHANICS.length) + 1;
+      list.push({
+        id: `g_${topicKey}_${i}`,
+        topic: topicKey,
+        mechanic,
+        grade,
+        title: `${MECHANIC_LABELS[mechanic]}: ${TOPICS[topicKey].label}${variantNum>1?' '+(variantNum):''}`,
+      });
+    }
+  });
+  return list;
+}
+const GAME_CATALOG = buildGameCatalog();
+
+function renderGamesHub(c){
+  const u = STATE.currentUser;
+  const f = STATE.gameFilter;
+  c.innerHTML = `
+    <div class="game-filterbar" id="topicFilterBar">
+      <div class="chip ${!f.topic?'active':''}" data-topic="">Усі теми</div>
+      ${Object.entries(TOPICS).map(([k,t])=>`<div class="chip ${f.topic===k?'active':''}" data-topic="${k}">${t.icon} ${t.label}</div>`).join('')}
+    </div>
+    <div class="game-filterbar" id="gradeFilterBar">
+      <div class="chip ${!f.grade?'active':''}" data-grade="">Усі класи</div>
+      ${[1,2,3,4].map(g=>`<div class="chip ${f.grade===g?'active':''}" data-grade="${g}">${g} клас</div>`).join('')}
+    </div>
+    <div id="gamesGridWrap"></div>
+  `;
+  $all('#topicFilterBar .chip').forEach(chip=>{
+    chip.onclick = ()=>{ STATE.gameFilter.topic = chip.dataset.topic || null; renderGamesHub(c); };
+  });
+  $all('#gradeFilterBar .chip').forEach(chip=>{
+    chip.onclick = ()=>{ STATE.gameFilter.grade = chip.dataset.grade ? parseInt(chip.dataset.grade) : null; renderGamesHub(c); };
+  });
+  renderGamesGrid($('#gamesGridWrap'));
+}
+
+function renderGamesGrid(container){
+  const f = STATE.gameFilter;
+  let games = GAME_CATALOG.slice();
+  if(f.topic) games = games.filter(g=>g.topic===f.topic);
+  if(f.grade) games = games.filter(g=>g.grade===f.grade);
+
+  if(f.topic){
+    const t = TOPICS[f.topic];
+    container.innerHTML = `<div class="topic-banner" style="background:${t.color};">
+      <div class="ti">${t.icon}</div><div><h2>${t.label}</h2><p>${t.desc}</p></div>
+    </div>`;
+  } else {
+    container.innerHTML = '';
+  }
+
+  const grid = el(`<div class="grid grid-4"></div>`);
+  container.appendChild(grid);
+
+  if(!games.length){
+    grid.outerHTML = `<div class="empty-state"><div class="ei">🔍</div><p>Ігор не знайдено для цього фільтру</p></div>`;
+    return;
+  }
+
+  games.forEach(g=>{
+    const t = TOPICS[g.topic];
+    const card = el(`
+      <div class="game-card" data-id="${g.id}">
+        <div class="gi">${MECHANIC_ICONS[g.mechanic]}</div>
+        <h4>${esc(g.title)}</h4>
+        <div class="gmeta">
+          <span class="badge" style="background:${t.color}22;color:${t.color};">${t.icon} ${t.label}</span>
+          <span class="badge">${g.grade} клас</span>
+        </div>
+      </div>
+    `);
+    card.onclick = ()=>startGame(g);
+    grid.appendChild(card);
+  });
+}
+
+/* ============================================================
+   ІГРОВИЙ РУШІЙ (PLAYER)
+   ============================================================ */
+const TOTAL_ROUNDS = 8;
+
+function startGame(gameDef){
+  STATE.activeGameSession = {
+    game: gameDef,
+    round: 0,
+    score: 0,
+    correctCount: 0,
+    totalRounds: TOTAL_ROUNDS,
+    finished: false,
+  };
+  renderGamePlayer();
+}
+
+function closeGame(){
+  STATE.activeGameSession = null;
+  const overlay = $('#gamePlayerOverlay');
+  if(overlay) overlay.remove();
+  renderPageContent(STATE.currentPage);
+}
+
+function renderGamePlayer(){
+  let overlay = $('#gamePlayerOverlay');
+  if(!overlay){
+    overlay = el(`<div class="game-player-overlay" id="gamePlayerOverlay"></div>`);
+    document.body.appendChild(overlay);
+  }
+  const sess = STATE.activeGameSession;
+  const g = sess.game;
+  const t = TOPICS[g.topic];
+
+  overlay.innerHTML = `
+    <div class="gp-top">
+      <div class="gp-info">
+        <div class="gp-close" id="gpCloseBtn">✕</div>
+        <div>
+          <div style="font-weight:800;">${esc(g.title)}</div>
+          <div style="font-size:12px;opacity:.8;">${t.icon} ${t.label} · ${g.grade} клас</div>
+        </div>
+      </div>
+      <div class="gp-stats">
+        <span>⭐ ${sess.score}</span>
+        <span>${sess.round}/${sess.totalRounds}</span>
+      </div>
+    </div>
+    <div class="gp-progressbar"><div class="gp-progressbar-fill" style="width:${(sess.round/sess.totalRounds)*100}%;"></div></div>
+    <div class="gp-stage" id="gpStage"></div>
+  `;
+  $('#gpCloseBtn').onclick = closeGame;
+
+  if(sess.finished){ renderGameResult(); return; }
+  if(sess.round >= sess.totalRounds){ finishGame(); return; }
+
+  sess.round++;
+  renderRound(g);
+  // update header again after increment
+  $('.gp-stats').innerHTML = `<span>⭐ ${sess.score}</span><span>${sess.round}/${sess.totalRounds}</span>`;
+  $('.gp-progressbar-fill').style.width = ((sess.round-1)/sess.totalRounds)*100 + '%';
+}
+
+function finishGame(){
+  const sess = STATE.activeGameSession;
+  sess.finished = true;
+  // save progress
+  const u = STATE.currentUser;
+  const studentId = u.role==='student' ? u.id : null;
+  if(studentId){
+    if(!DB.gameProgress[studentId]) DB.gameProgress[studentId] = {};
+    const prev = DB.gameProgress[studentId][sess.game.id];
+    DB.gameProgress[studentId][sess.game.id] = {
+      bestScore: Math.max(sess.score, prev?prev.bestScore:0),
+      plays: (prev?prev.plays:0) + 1,
+      lastPlayed: new Date().toISOString().slice(0,10),
+    };
+    // Зберігаємо в бекенд
+    DataLayer.saveGameScore(sess.game.id, sess.score).catch(()=>{});
+  }
+  renderGamePlayer();
+}
+
+function renderGameResult(){
+  const sess = STATE.activeGameSession;
+  const pct = Math.round((sess.correctCount / sess.totalRounds) * 100);
+  const stars = pct>=90?'🏆':pct>=70?'🌟':pct>=50?'👍':'💪';
+  const msg = pct>=90?'Бездоганно! Ти справжній математик!':pct>=70?'Чудовий результат!':pct>=50?'Непогано, тренуйся далі!':'Спробуй ще раз, у тебе вийде!';
+  $('#gpStage').innerHTML = `
+    <div class="gp-card gp-result-screen">
+      <div class="rstar">${stars}</div>
+      <h2>${msg}</h2>
+      <div class="gp-result-stats">
+        <div class="gp-result-stat"><b>${sess.score}</b><span>Очків</span></div>
+        <div class="gp-result-stat"><b>${sess.correctCount}/${sess.totalRounds}</b><span>Правильно</span></div>
+        <div class="gp-result-stat"><b>${pct}%</b><span>Точність</span></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button class="btn btn-outline" onclick="startGame(STATE.activeGameSession.game)">🔄 Зіграти ще раз</button>
+        <button class="btn btn-primary" onclick="closeGame()">Завершити</button>
+      </div>
+    </div>
+  `;
+}
+
+function gpAwardPoint(correct, points=10){
+  const sess = STATE.activeGameSession;
+  if(correct){ sess.score += points; sess.correctCount++; }
+}
+
+function gpNextRoundBtn(){
+  return `<button class="btn btn-primary gp-nextbtn" id="gpNextBtn">Далі →</button>`;
+}
+function bindNextBtn(){
+  const btn = $('#gpNextBtn');
+  if(btn) btn.onclick = renderGamePlayer;
+}
+
+function renderRound(g){
+  const stage = $('#gpStage');
+  const fns = {
+    quiz4: renderQuiz4, trueFalse: renderTrueFalse, flashCard: renderFlashCard, fillBlank: renderFillBlank,
+    speedQuiz: renderSpeedQuiz, matchPairs: renderMatchPairs, sortGroups: renderSortGroups, sequence: renderSequence,
+    countEmoji: renderCountEmoji, compare: renderCompare, numline: renderNumline, balloons: renderBalloons,
+  };
+  (fns[g.mechanic] || renderQuiz4)(stage, g);
+}
+
+/* ---- helper: generate a question payload based on topic ---- */
+function topicQuestion(topic, grade){
+  if(topic==='arithmetic') return genArithmeticProblem(grade);
+  if(topic==='multtable') return genMultTable(grade);
+  if(topic==='geometry') return genGeometryQuestion(grade);
+  if(topic==='numline') return genCompareNumbers(grade); // used loosely; numline mechanic has its own gen
+  return genArithmeticProblem(grade);
+}
+
+/* ---- MECHANIC 1: quiz4 (4 варіанти) ---- */
+function renderQuiz4(stage, g){
+  let q, answer, optionsRaw;
+  if(g.topic==='geometry'){
+    q = genGeometryQuestion(g.grade);
+    answer = q.answer;
+    optionsRaw = wrongAnswersNear(answer, 3, g.grade<=2?3:10);
+  } else {
+    q = topicQuestion(g.topic, g.grade);
+    answer = q.answer;
+    optionsRaw = wrongAnswersNear(answer, 3, g.grade===1?5:g.grade===2?8:g.grade===3?20:50);
+  }
+  const options = shuffle([answer, ...optionsRaw]);
+  stage.innerHTML = `
+    <div class="gp-card">
+      <div class="gp-question">${esc(q.text)}</div>
+      <div class="gp-options">${options.map(o=>`<button class="gp-opt" data-val="${o}">${o}</button>`).join('')}</div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  $all('.gp-opt', stage).forEach(btn=>{
+    btn.onclick = ()=>{
+      const val = parseInt(btn.dataset.val);
+      const correct = val === answer;
+      $all('.gp-opt', stage).forEach(b=>{
+        b.disabled = true;
+        if(parseInt(b.dataset.val)===answer) b.classList.add('correct');
+        else if(b===btn) b.classList.add('wrong');
+      });
+      gpAwardPoint(correct);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Правильна відповідь: ${answer}`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    };
+  });
+}
+
+/* ---- MECHANIC 2: trueFalse ---- */
+function renderTrueFalse(stage, g){
+  let statementText, isTrue, realAnswer;
+  if(g.topic==='geometry'){
+    const q = genGeometryQuestion(g.grade);
+    realAnswer = q.answer;
+    const showWrong = Math.random()<0.5;
+    let displayedAnswer = realAnswer;
+    if(showWrong){
+      const wrongs = wrongAnswersNear(realAnswer, 1, g.grade<=2?2:Math.max(1,Math.round(realAnswer*0.3)));
+      displayedAnswer = wrongs[0];
+    }
+    isTrue = displayedAnswer === realAnswer;
+    if(q.type==='identify'){
+      statementText = `У фігури «${q.shape.name}» — стільки сторін:`;
+    } else if(q.type==='perimeter'){
+      statementText = `Периметр прямокутника зі сторонами ${q.w} см і ${q.h} см дорівнює:`;
+    } else {
+      statementText = `Площа прямокутника зі сторонами ${q.w} см і ${q.h} см дорівнює:`;
+    }
+    var displayedAnswerLabel = q.type==='identify' ? `${displayedAnswer} ${pluralSides(displayedAnswer)}` : (q.type==='area' ? `${displayedAnswer} см²` : `${displayedAnswer} см`);
+  } else {
+    const q = topicQuestion(g.topic, g.grade);
+    realAnswer = q.answer;
+    const showWrong = Math.random()<0.5;
+    let displayedAnswer = realAnswer;
+    if(showWrong){
+      const wrongs = wrongAnswersNear(realAnswer, 1, g.grade===1?4:g.grade===2?6:15);
+      displayedAnswer = wrongs[0];
+    }
+    statementText = q.text.replace(/=\s*\?/, '=').replace('?', '').trim();
+    var displayedAnswerLabel = String(displayedAnswer);
+    isTrue = displayedAnswer === realAnswer;
+  }
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="muted" style="text-align:center;margin-bottom:8px;">Прочитай твердження уважно</p>
+      <div class="gp-question" style="margin-bottom:6px;">${esc(statementText)}</div>
+      <div style="text-align:center;margin-bottom:18px;">
+        <span style="display:inline-block;background:var(--primary-light);color:var(--primary);font-size:26px;font-weight:800;padding:10px 26px;border-radius:14px;">${esc(displayedAnswerLabel)}</span>
+      </div>
+      <p class="muted" style="text-align:center;margin-bottom:18px;">Це правильно чи неправильно?</p>
+      <div class="gp-options">
+        <button class="gp-opt" data-val="true" style="color:var(--accent-dark);">✅ Правильно</button>
+        <button class="gp-opt" data-val="false" style="color:var(--danger);">❌ Неправильно</button>
+      </div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  $all('.gp-opt', stage).forEach(btn=>{
+    btn.onclick = ()=>{
+      const chosenTrue = btn.dataset.val === 'true';
+      const correct = chosenTrue === isTrue;
+      $all('.gp-opt', stage).forEach(b=>b.disabled=true);
+      btn.classList.add(correct?'correct':'wrong');
+      gpAwardPoint(correct);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Насправді це ${isTrue?'правильно':'неправильно'} (відповідь: ${realAnswer})`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    };
+  });
+}
+
+/* ---- MECHANIC 3: flashCard (перевертається) ---- */
+function renderFlashCard(stage, g){
+  let q;
+  if(g.topic==='geometry') q = genGeometryQuestion(g.grade);
+  else q = topicQuestion(g.topic, g.grade);
+  stage.innerHTML = `
+    <div class="gp-card" style="text-align:center;">
+      <p class="muted" style="margin-bottom:18px;">Натисни на картку, щоб побачити відповідь</p>
+      <div class="flashcard-wrap" id="fcWrap">
+        <div class="flashcard-inner" id="fcInner">
+          <div class="flashcard-face flashcard-front">${esc(q.text)}</div>
+          <div class="flashcard-face flashcard-back">${esc(String(q.answer))}</div>
+        </div>
+      </div>
+      <div id="fcAfterButtons" style="margin-top:24px;display:none;">
+        <p class="muted" style="margin-bottom:12px;">Ти знав(-ла) відповідь?</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="btn btn-accent" id="fcKnew">✅ Так, знав(ла)</button>
+          <button class="btn btn-outline" id="fcDidnt">❌ Ні, не знав(ла)</button>
+        </div>
+      </div>
+    </div>
+  `;
+  $('#fcInner').onclick = ()=>{
+    $('#fcInner').classList.add('flipped');
+    setTimeout(()=>{ $('#fcAfterButtons').style.display='block'; }, 400);
+  };
+  const next = (correct)=>{
+    gpAwardPoint(correct);
+    renderGamePlayer();
+  };
+  stage.addEventListener('click', (e)=>{
+    if(e.target.id==='fcKnew') next(true);
+    if(e.target.id==='fcDidnt') next(false);
+  });
+}
+
+/* ---- MECHANIC 4: fillBlank (введи відповідь) ---- */
+function renderFillBlank(stage, g){
+  let q;
+  if(g.topic==='geometry') q = genGeometryQuestion(g.grade);
+  else q = topicQuestion(g.topic, g.grade);
+  stage.innerHTML = `
+    <div class="gp-card">
+      <div class="gp-question">${esc(q.text)}</div>
+      <div class="gp-input-row">
+        <input type="text" id="fbInput" placeholder="?" autocomplete="off">
+        <button class="btn btn-primary" id="fbSubmit">Перевірити</button>
+      </div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  const input = $('#fbInput');
+  input.focus();
+  const check = ()=>{
+    const val = input.value.trim().replace(',', '.');
+    const correct = val == String(q.answer);
+    input.disabled = true; $('#fbSubmit').disabled = true;
+    gpAwardPoint(correct);
+    $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+    $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Правильна відповідь: ${q.answer}`;
+    stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+    bindNextBtn();
+  };
+  $('#fbSubmit').onclick = check;
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') check(); });
+}
+
+/* ---- MECHANIC 5: speedQuiz (таймер) ---- */
+function renderSpeedQuiz(stage, g){
+  let q;
+  if(g.topic==='geometry') q = genGeometryQuestion(g.grade);
+  else q = topicQuestion(g.topic, g.grade);
+  const answer = q.answer;
+  const options = shuffle([answer, ...wrongAnswersNear(answer, 3, g.grade===1?5:g.grade===2?8:g.grade===3?20:50)]);
+  const TIME_LIMIT = 8000;
+  let startTime = Date.now();
+  let timerInterval, answered = false;
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <div class="timer-bar-wrap"><div class="timer-bar-fill" id="speedBar" style="width:100%;"></div></div>
+      <div class="gp-question">⏱️ ${esc(q.text)}</div>
+      <div class="gp-options">${options.map(o=>`<button class="gp-opt" data-val="${o}">${o}</button>`).join('')}</div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+
+  function endRound(correct, timedOut){
+    if(answered) return;
+    answered = true;
+    clearInterval(timerInterval);
+    $all('.gp-opt', stage).forEach(b=>{
+      b.disabled = true;
+      if(parseInt(b.dataset.val)===answer) b.classList.add('correct');
+    });
+    gpAwardPoint(correct, correct?15:0);
+    $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+    $('#gpFeedback').textContent = timedOut ? `⏰ Час вийшов! Відповідь: ${answer}` : (correct ? '✅ Швидко і правильно! +15' : `❌ Відповідь: ${answer}`);
+    stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+    bindNextBtn();
+  }
+
+  timerInterval = setInterval(()=>{
+    const elapsed = Date.now() - startTime;
+    const pct = Math.max(0, 100 - (elapsed/TIME_LIMIT)*100);
+    const bar = $('#speedBar');
+    if(bar) bar.style.width = pct + '%';
+    if(elapsed >= TIME_LIMIT){ endRound(false, true); }
+  }, 100);
+
+  $all('.gp-opt', stage).forEach(btn=>{
+    btn.onclick = ()=>{
+      if(answered) return;
+      const val = parseInt(btn.dataset.val);
+      if(val!==answer) btn.classList.add('wrong');
+      endRound(val===answer, false);
+    };
+  });
+}
+
+/* ---- MECHANIC 6: matchPairs (з'єднай пари кліком) ---- */
+function renderMatchPairs(stage, g){
+  const pairCount = 4;
+  const items = [];
+  for(let i=0;i<pairCount;i++){
+    let q;
+    if(g.topic==='multtable') q = genMultTable(g.grade);
+    else if(g.topic==='geometry'){
+      const s = genGeometryQuestion(g.grade);
+      q = {text:s.text, answer:s.answer};
+    } else q = genArithmeticProblem(g.grade);
+    items.push({id:'p'+i, left:q.text.replace(' = ?','').replace('?','').trim(), right:String(q.answer)});
+  }
+  const lefts = shuffle(items.map(it=>({id:it.id, label:it.left})));
+  const rights = shuffle(items.map(it=>({id:it.id, label:it.right})));
+  let selectedLeft = null, matchedCount = 0;
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question" style="font-size:17px;">З'єднай приклад з відповіддю</p>
+      <div class="gp-pairs">
+        <div class="pair-col" id="pairLeftCol">${lefts.map(it=>`<div class="pair-item" data-id="${it.id}" data-side="left">${esc(it.label)}</div>`).join('')}</div>
+        <div class="pair-col" id="pairRightCol">${rights.map(it=>`<div class="pair-item" data-id="${it.id}" data-side="right">${esc(it.label)}</div>`).join('')}</div>
+      </div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+
+  function checkDone(){
+    if(matchedCount === pairCount){
+      gpAwardPoint(true, 10);
+      $('#gpFeedback').className = 'gp-feedback ok';
+      $('#gpFeedback').textContent = '✅ Усі пари знайдено!';
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    }
+  }
+
+  stage.addEventListener('click', (e)=>{
+    const item = e.target.closest('.pair-item');
+    if(!item || item.classList.contains('matched')) return;
+    const side = item.dataset.side;
+    if(side==='left'){
+      $all('.pair-item[data-side="left"]', stage).forEach(it=>it.classList.remove('selected'));
+      item.classList.add('selected');
+      selectedLeft = item;
+    } else if(side==='right' && selectedLeft){
+      if(item.dataset.id === selectedLeft.dataset.id){
+        item.classList.add('matched'); selectedLeft.classList.add('matched');
+        selectedLeft.classList.remove('selected');
+        matchedCount++;
+        selectedLeft = null;
+        checkDone();
+      } else {
+        item.style.borderColor = 'var(--danger)';
+        setTimeout(()=>{ item.style.borderColor=''; }, 400);
+      }
+    }
+  });
+}
+
+/* ---- MECHANIC 7: sortGroups (сортуй по групах) ---- */
+function renderSortGroups(stage, g){
+  // sort numbers into "Парні / Непарні" or "Більше X / Менше X" depending on grade
+  const r = GRADE_RANGES[g.grade];
+  const useEvenOdd = Math.random()<0.5;
+  let groupA, groupB, items;
+  if(useEvenOdd){
+    groupA = 'Парні'; groupB = 'Непарні';
+    items = Array.from({length:6}, ()=>rnd(1, r.max)).map(n=>({val:n, group: n%2===0?'A':'B'}));
+  } else {
+    const threshold = Math.floor(r.max/2);
+    groupA = `Менше ${threshold}`; groupB = `Більше або дорівнює ${threshold}`;
+    items = Array.from({length:6}, ()=>rnd(1, r.max)).map(n=>({val:n, group: n<threshold?'A':'B'}));
+  }
+  items = shuffle(items.map((it,idx)=>({...it, id:'sg'+idx})));
+  let placed = 0;
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question" style="font-size:17px;">Перетягни числа у правильну групу</p>
+      <div class="sort-groups">
+        <div class="sort-zone" data-zone="A"><h5>${groupA}</h5><div class="sort-zone-items"></div></div>
+        <div class="sort-zone" data-zone="B"><h5>${groupB}</h5><div class="sort-zone-items"></div></div>
+      </div>
+      <div class="sort-pool" id="sortPool">${items.map(it=>`<div class="drag-chip" draggable="true" data-id="${it.id}" data-group="${it.group}">${it.val}</div>`).join('')}</div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+      <p class="muted" style="text-align:center;margin-top:10px;">Або натисни на число, а потім на групу</p>
+    </div>
+  `;
+
+  let selectedChip = null;
+  function tryPlace(chip, zone){
+    const correct = chip.dataset.group === zone.dataset.zone;
+    if(correct){
+      zone.querySelector('.sort-zone-items').appendChild(chip);
+      chip.classList.add('placed');
+      chip.draggable = false;
+      chip.style.borderColor = 'var(--accent)'; chip.style.color='var(--accent-dark)';
+      placed++;
+      if(placed===items.length){
+        gpAwardPoint(true, 10);
+        $('#gpFeedback').className='gp-feedback ok'; $('#gpFeedback').textContent='✅ Чудово, все відсортовано правильно!';
+        stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+        bindNextBtn();
+      }
+    } else {
+      chip.style.borderColor = 'var(--danger)';
+      setTimeout(()=>{ chip.style.borderColor='var(--primary)'; }, 400);
+    }
+  }
+
+  $all('.drag-chip', stage).forEach(chip=>{
+    chip.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', chip.dataset.id); });
+    chip.addEventListener('click', ()=>{
+      $all('.drag-chip', stage).forEach(c=>c.style.outline='');
+      selectedChip = chip;
+      chip.style.outline = '3px solid var(--primary)';
+    });
+  });
+  $all('.sort-zone', stage).forEach(zone=>{
+    zone.addEventListener('dragover', e=>e.preventDefault());
+    zone.addEventListener('drop', e=>{
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const chip = stage.querySelector(`.drag-chip[data-id="${id}"]`);
+      if(chip && !chip.classList.contains('placed')) tryPlace(chip, zone);
+    });
+    zone.addEventListener('click', ()=>{
+      if(selectedChip && !selectedChip.classList.contains('placed')){ tryPlace(selectedChip, zone); selectedChip=null; }
+    });
+  });
+}
+
+/* ---- MECHANIC 8: sequence (впорядкуй) ---- */
+function renderSequence(stage, g){
+  const r = GRADE_RANGES[g.grade];
+  const step = pick([1,1,1,2]);
+  const start = rnd(1, Math.max(2, r.max - step*5));
+  const correctSeq = Array.from({length:5}, (_,i)=>start + i*step);
+  const shuffled = shuffle(correctSeq.map((v,idx)=>({val:v, id:'sq'+idx})));
+  let picks = [];
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question" style="font-size:17px;">Розстав числа за зростанням</p>
+      <div class="seq-row" id="seqChips">${shuffled.map(it=>`<div class="seq-chip" data-id="${it.id}" data-val="${it.val}">${it.val}</div>`).join('')}</div>
+      <div class="seq-slots" id="seqSlots">${correctSeq.map((_,i)=>`<div class="seq-slot" data-pos="${i}"></div>`).join('')}</div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+
+  $all('.seq-chip', stage).forEach(chip=>{
+    chip.onclick = ()=>{
+      if(chip.classList.contains('picked')) return;
+      const slot = $all('.seq-slot', stage)[picks.length];
+      if(!slot) return;
+      slot.textContent = chip.dataset.val;
+      slot.classList.add('filled');
+      chip.classList.add('picked');
+      picks.push(parseInt(chip.dataset.val));
+      if(picks.length === correctSeq.length){
+        const correct = JSON.stringify(picks) === JSON.stringify(correctSeq);
+        gpAwardPoint(correct, 10);
+        $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+        $('#gpFeedback').textContent = correct ? '✅ Правильний порядок!' : `❌ Правильний порядок: ${correctSeq.join(', ')}`;
+        stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+        bindNextBtn();
+      }
+    };
+  });
+}
+
+/* ---- MECHANIC 9: countEmoji (порахуй emoji) ---- */
+function renderCountEmoji(stage, g){
+  const maxCount = g.grade===1?10: g.grade===2?20: g.grade===3?30:40;
+  const count = rnd(3, Math.min(maxCount, 24));
+  const emoji = pick(EMOJI_SET);
+  const options = shuffle([count, ...wrongAnswersNear(count, 3, 4)]);
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question">Порахуй, скільки тут ${emoji}</p>
+      <div class="emoji-grid">${Array.from({length:count}).map(()=>emoji).join('')}</div>
+      <div class="gp-options">${options.map(o=>`<button class="gp-opt" data-val="${o}">${o}</button>`).join('')}</div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  $all('.gp-opt', stage).forEach(btn=>{
+    btn.onclick = ()=>{
+      const val = parseInt(btn.dataset.val);
+      const correct = val === count;
+      $all('.gp-opt', stage).forEach(b=>{
+        b.disabled = true;
+        if(parseInt(b.dataset.val)===count) b.classList.add('correct');
+        else if(b===btn) b.classList.add('wrong');
+      });
+      gpAwardPoint(correct);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Правильна відповідь: ${count}`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    };
+  });
+}
+
+/* ---- MECHANIC 10: compare (>, <, =) ---- */
+function renderCompare(stage, g){
+  const q = genCompareNumbers(g.grade);
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question">Порівняй числа</p>
+      <div class="gp-compare-row">
+        <div class="gp-compare-num">${q.a}</div>
+        <div id="compareSign" style="font-size:34px;font-weight:800;color:var(--text-light);">?</div>
+        <div class="gp-compare-num">${q.b}</div>
+      </div>
+      <div class="gp-compare-opts">
+        <button class="gp-opt" data-val=">">&gt;</button>
+        <button class="gp-opt" data-val="=">=</button>
+        <button class="gp-opt" data-val="<">&lt;</button>
+      </div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  $all('.gp-opt', stage).forEach(btn=>{
+    btn.onclick = ()=>{
+      const val = btn.dataset.val;
+      const correct = val === q.answer;
+      $('#compareSign').textContent = q.answer;
+      $all('.gp-opt', stage).forEach(b=>{
+        b.disabled = true;
+        if(b.dataset.val===q.answer) b.classList.add('correct');
+        else if(b===btn) b.classList.add('wrong');
+      });
+      gpAwardPoint(correct);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Правильний знак: ${q.answer}`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    };
+  });
+}
+
+/* ---- MECHANIC 11: numline (SVG числова пряма) ---- */
+function renderNumline(stage, g){
+  const q = genNumlinePosition(g.grade);
+  const ticks = [];
+  const numTicks = 6;
+  const tickStep = q.lineMax / numTicks;
+  for(let i=0;i<=numTicks;i++){ ticks.push(Math.round(i*tickStep)); }
+  const svgWidth = 600, padding = 40;
+  const valueToX = (v)=> padding + (v / q.lineMax) * (svgWidth - padding*2);
+
+  // generate options as positions on the line (values), pick 4 candidate values near actual
+  const candidates = shuffle([q.value, ...wrongAnswersNear(q.value, 3, Math.max(1,Math.round(q.lineMax*0.15)))]);
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question">Де на числовій прямій стоїть число <b style="color:var(--primary);">${q.value}</b>?</p>
+      <div class="numline-wrap">
+        <svg viewBox="0 0 ${svgWidth} 110" style="width:100%;">
+          <line x1="${padding}" y1="55" x2="${svgWidth-padding}" y2="55" stroke="#D6D6F0" stroke-width="4" stroke-linecap="round"/>
+          ${ticks.map(t=>`
+            <line x1="${valueToX(t)}" y1="45" x2="${valueToX(t)}" y2="65" stroke="#B8B8DA" stroke-width="3"/>
+            <text x="${valueToX(t)}" y="88" text-anchor="middle" font-size="13" fill="#6E6E8F" font-weight="600">${t}</text>
+          `).join('')}
+          ${candidates.map((c,i)=>`
+            <circle class="nl-point" data-val="${c}" cx="${valueToX(c)}" cy="55" r="14" fill="#5B4FD9" stroke="#fff" stroke-width="3" style="cursor:pointer;"/>
+            <text x="${valueToX(c)}" y="60" text-anchor="middle" font-size="12" fill="#fff" font-weight="800" style="pointer-events:none;">${i+1}</text>
+          `).join('')}
+        </svg>
+      </div>
+      <p class="muted" style="text-align:center;">Натисни на точку, яка відповідає числу ${q.value}</p>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  $all('.nl-point', stage).forEach(pt=>{
+    pt.addEventListener('click', ()=>{
+      const val = parseInt(pt.dataset.val);
+      const correct = val === q.value;
+      $all('.nl-point', stage).forEach(p=>{
+        p.style.pointerEvents='none';
+        if(parseInt(p.dataset.val)===q.value) p.setAttribute('fill', '#22C98E');
+        else if(p===pt) p.setAttribute('fill', '#E84855');
+      });
+      gpAwardPoint(correct);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Правильно!' : `❌ Правильна позиція: ${q.value}`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    });
+  });
+}
+
+/* ---- MECHANIC 12: balloons (лопни правильну кулю) ---- */
+const BALLOON_COLORS = ['#5B4FD9','#22C98E','#F5A623','#E84855','#3FA7D6','#C145D6'];
+function renderBalloons(stage, g){
+  let q;
+  if(g.topic==='multtable') q = genMultTable(g.grade);
+  else if(g.topic==='geometry'){ const s=genGeometryQuestion(g.grade); q={text:s.text, answer:s.answer}; }
+  else q = topicQuestion(g.topic, g.grade);
+  const answer = q.answer;
+  const options = shuffle([answer, ...wrongAnswersNear(answer, 4, g.grade===1?5:g.grade===2?8:g.grade===3?20:50)]);
+  let answered = false;
+
+  stage.innerHTML = `
+    <div class="gp-card">
+      <p class="gp-question">${esc(q.text)}</p>
+      <p class="muted" style="text-align:center;margin-bottom:10px;">Лопни кулю з правильною відповіддю!</p>
+      <div class="balloon-field" id="balloonField"></div>
+      <div class="gp-feedback" id="gpFeedback"></div>
+    </div>
+  `;
+  const field = $('#balloonField');
+  options.forEach((opt,i)=>{
+    const b = el(`<div class="balloon" data-val="${opt}" style="left:${(i/(options.length))*88+2}%; background:${BALLOON_COLORS[i%BALLOON_COLORS.length]}; animation-duration:${5+i*0.6}s; animation-delay:${i*0.3}s;">${opt}</div>`);
+    field.appendChild(b);
+    b.addEventListener('click', ()=>{
+      if(answered) return;
+      answered = true;
+      const correct = opt === answer;
+      $all('.balloon', field).forEach(bal=>{ bal.style.animationPlayState='paused'; });
+      b.style.transform = 'scale(1.3)'; b.style.opacity='0';
+      gpAwardPoint(correct, 12);
+      $('#gpFeedback').className = 'gp-feedback ' + (correct?'ok':'bad');
+      $('#gpFeedback').textContent = correct ? '✅ Точно в ціль! +12' : `❌ Правильна відповідь: ${answer}`;
+      stage.querySelector('.gp-card').insertAdjacentHTML('beforeend', gpNextRoundBtn());
+      bindNextBtn();
+    });
+  });
+}
+
+/* ============================================================
+   ІНІЦІАЛІЗАЦІЯ ЗАСТОСУНКУ
+   ============================================================ */
+async function init(){
+  // Перевіряємо бекенд
+  await checkBackend();
+
+  // Перевіряємо URL параметри (verify email / reset password)
+  const urlAction = checkUrlParams();
+
+  if (API_MODE) {
+    // ── РЕЖИМ З БЕКЕНДОМ ────────────────────────────────────
+    if (urlAction?.type === 'verify') {
+      // Підтвердження email через URL
+      try {
+        const user = await API.verifyEmail(urlAction.token);
+        STATE.currentUser = user;
+        toast('Email підтверджено! Ласкаво просимо! 🎉', 'success');
+        // Підтягуємо дані з БД
+        await syncUserDataFromBackend(user);
+        renderApp();
+      } catch (e) {
+        toast(e.message || 'Посилання недійсне', 'error');
+        renderAuthScreen();
+      }
+      return;
+    }
+
+    if (urlAction?.type === 'reset') {
+      STATE.pendingResetToken = urlAction.token;
+      renderResetPasswordScreen();
+      return;
+    }
+
+    // Пробуємо відновити сесію з localStorage токену
+    const savedToken = TokenStore.get();
+    if (savedToken) {
+      try {
+        const user = await API.me();
+        STATE.currentUser = user;
+        await syncUserDataFromBackend(user);
+        renderApp();
+        return;
+      } catch {
+        TokenStore.clear();
+      }
+    }
+
+    renderAuthScreen();
+  } else {
+    // ── DEMO РЕЖИМ (in-memory) ───────────────────────────────
+    checkUrlForVerification();
+    renderAuthScreen();
+  }
+}
+
+// ── Синхронізація даних з бекенду в локальний DB ─────────────
+async function syncUserDataFromBackend(user) {
+  if (!API_MODE) return;
+  try {
+    // Підтягуємо уроки, ДЗ, повідомлення і зберігаємо в DB для рендерингу
+    const [lessons, homework, materials, payments, notifications] = await Promise.allSettled([
+      API.getLessons(),
+      API.getHomework(),
+      API.getMaterials(),
+      API.getPayments(),
+      API.getNotifications(),
+    ]);
+
+    if (lessons.status === 'fulfilled') DB.lessons = lessons.value.map(adaptLesson);
+    if (homework.status === 'fulfilled') DB.homework = homework.value.map(adaptHomework);
+    if (materials.status === 'fulfilled') DB.materials = adaptMaterials(materials.value);
+    if (payments.status === 'fulfilled') DB.payments = payments.value;
+    if (notifications.status === 'fulfilled') DB.notifications = notifications.value;
+
+    // Підтягуємо всіх користувачів для адміна/вчителя
+    if (user.role === 'admin') {
+      const usersResp = await API.getUsers().catch(() => ({ users: [] }));
+      DB.users = usersResp.users || [];
+      // Додаємо поточного юзера якщо нема
+      if (!DB.users.find(u => u.id === user.id)) DB.users.push(user);
+    } else if (user.role === 'teacher') {
+      const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
+      DB.users = [user, ...(studentsResp.users || [])];
+    } else {
+      DB.users = [user];
+      // Додаємо вчителя
+      if (user.teacher) DB.users.push(user.teacher);
+      // Додаємо дітей (для батьків)
+      if (user.children) DB.users.push(...user.children);
+    }
+
+    // Прогрес ігор
+    if (user.role === 'student') {
+      const gpResp = await API.getGameProgress().catch(() => ({ progress: {} }));
+      DB.gameProgress[user.id] = gpResp.progress || {};
+    }
+
+  } catch (e) {
+    console.warn('Sync error:', e.message);
+  }
+}
+
+// ── Адаптери: бекенд-формат → фронтенд-формат ───────────────
+function adaptLesson(l) {
+  return {
+    id: l.id, studentId: l.studentId, teacherId: l.teacherId,
+    subject: l.subject, date: l.date, time: l.time,
+    meetUrl: l.meetUrl, trial: l.trial, status: l.status, notes: l.notes,
+  };
+}
+function adaptHomework(h) {
+  return {
+    id: h.id, studentId: h.studentId, teacherId: h.teacherId,
+    title: h.title, desc: h.desc, due: h.due, done: h.done,
+    grade: h.grade, fileUrl: h.fileUrl, fileName: h.fileName, audioBase64: h.audioBase64,
+  };
+}
+function adaptMaterials(mats) {
+  return mats.map(m => ({
+    ...m,
+    grade: typeof m.grades === 'string' ? JSON.parse(m.grades) : m.grades,
+  }));
+}
+
+// ── Обгортки для операцій з даними (API + in-memory) ─────────
+const DataLayer = {
+  async addLesson(payload) {
+    if (API_MODE) {
+      const l = await API.createLesson(payload);
+      DB.lessons.push(adaptLesson(l));
+      return l;
+    } else {
+      const l = { id: uid(), ...payload, status: 'planned' };
+      DB.lessons.push(l);
+      return l;
+    }
+  },
+  async completeLesson(id) {
+    if (API_MODE) {
+      await API.updateLesson(id, { status: 'completed' });
+    }
+    const l = DB.lessons.find(x => x.id === id);
+    if (l) l.status = 'completed';
+  },
+  async addHomework(payload) {
+    if (API_MODE) {
+      const h = await API.createHomework(payload);
+      DB.homework.push(adaptHomework(h));
+      return h;
+    } else {
+      const h = { id: uid(), ...payload, done: false };
+      DB.homework.push(h);
+      return h;
+    }
+  },
+  async toggleHomework(id, done) {
+    if (API_MODE) await API.updateHomework(id, { done }).catch(() => {});
+    const h = DB.homework.find(x => x.id === id);
+    if (h) { h.done = done; if (done) h.doneAt = new Date().toISOString(); }
+  },
+  async gradeHomework(id, grade) {
+    if (API_MODE) await API.updateHomework(id, { grade }).catch(() => {});
+    const h = DB.homework.find(x => x.id === id);
+    if (h) h.grade = grade;
+  },
+  async addMaterial(payload) {
+    if (API_MODE) {
+      const m = await API.createMaterial(payload);
+      DB.materials.push({ ...m, grade: JSON.parse(m.grades || '[]') });
+      return m;
+    } else {
+      const m = { id: uid(), ...payload, uploadedAt: new Date().toISOString().slice(0, 10) };
+      DB.materials.push(m);
+      return m;
+    }
+  },
+  async createPayment(payload) {
+    if (API_MODE) {
+      const p = await API.createPayment(payload);
+      DB.payments.push(p);
+      return p;
+    } else {
+      const p = { id: uid(), ...payload, status: 'pending' };
+      DB.payments.push(p);
+      return p;
+    }
+  },
+  async confirmPayment(id) {
+    if (API_MODE) await API.updatePayment(id, 'confirmed').catch(() => {});
+    const p = DB.payments.find(x => x.id === id);
+    if (p) p.status = 'confirmed';
+  },
+  async sendMsg(fromId, toId, text) {
+    if (API_MODE) {
+      await API.sendMessage(toId, text).catch(() => {});
+    }
+    const m = { id: uid(), fromId, toId, text, date: new Date().toISOString(), read: false };
+    DB.messages.push(m);
+    return m;
+  },
+  async saveGameScore(gameId, score) {
+    if (API_MODE) await API.saveGameProgress(gameId, score).catch(() => {});
+  },
+  async adminCreateUser(payload) {
+    if (API_MODE) {
+      const resp = await API.adminCreate(payload);
+      if (resp.user) DB.users.push(resp.user);
+      return resp;
+    } else {
+      // demo mode
+      const id = uid();
+      const user = { id, ...payload, emailVerified: true, balance: 0, trialUsed: false };
+      DB.users.push(user);
+      return { user, tempPassword: payload.password || '111111' };
+    }
+  },
+  async deleteUser(id) {
+    if (API_MODE) await API.deleteUser(id);
+    DB.users = DB.users.filter(u => u.id !== id);
+  },
+};
+
+// ── Екран скидання пароля ─────────────────────────────────────
+function renderResetPasswordScreen() {
+  const root = $('#appRoot');
+  root.innerHTML = `
+    <div class="auth-screen">
+      <div class="auth-box">
+        <div class="auth-logo"><div class="logo-mark">M</div><strong>МатеМакс</strong></div>
+        <h3 style="text-align:center;margin-bottom:18px;">Новий пароль</h3>
+        <div class="field"><label>Новий пароль</label><input type="password" id="newPassInput" placeholder="Мінімум 6 символів"></div>
+        <div class="field"><label>Підтвердіть пароль</label><input type="password" id="newPassConfirm" placeholder="Повторіть пароль"></div>
+        <button class="btn btn-primary btn-block" id="doResetBtn">Змінити пароль</button>
+      </div>
+    </div>
+  `;
+  $('#doResetBtn').onclick = async () => {
+    const p1 = $('#newPassInput').value;
+    const p2 = $('#newPassConfirm').value;
+    if (p1.length < 6) { toast('Пароль — мінімум 6 символів', 'error'); return; }
+    if (p1 !== p2) { toast('Паролі не збігаються', 'error'); return; }
+    try {
+      await API.resetPassword(STATE.pendingResetToken, p1);
+      toast('Пароль змінено! Увійдіть з новим паролем.', 'success');
+      STATE.pendingResetToken = null;
+      STATE.authMode = 'login';
+      renderAuthScreen();
+    } catch (e) {
+      toast(e.message || 'Помилка', 'error');
+    }
+  };
+}
+
+init();
+</script>
+</body>
+</html>
