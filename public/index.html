@@ -682,7 +682,7 @@ const STATE = {
   currentUser: null,
   currentPage: 'home',
   authMode: 'login', // login | register
-  authRole: 'student',
+  authRole: 'parent',
   gameFilter: { topic: null, grade: null },
   activeGameSession: null,
   adminViewingStudent: null, // studentId — для перегляду кабінету учня адміном
@@ -735,9 +735,7 @@ function getStudentsOf(teacherId){
 }
 function getUserById(id){ return DB.users.find(u=>u.id===id); }
 function getChildrenOf(parentId){
-  const p = getUserById(parentId);
-  if(!p) return [];
-  return (p.children||[]).map(getUserById).filter(Boolean);
+  return DB.users.filter(u => u.parentId === parentId || u.parent_id === parentId);
 }
 
 /* ---------------------------- AUTH ---------------------------- */
@@ -836,7 +834,7 @@ function renderRegisterForm(){
     <div class="field">
       <label>Я реєструюсь як:</label>
       <div class="role-pick">
-        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin').map(([k,m])=>`
+        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin' && k!=='student').map(([k,m])=>`
           <div class="role-pick-item ${role===k?'active':''}" data-role="${k}">
             <span class="ric">${m.icon}</span>${m.label}
           </div>`).join('')}
@@ -1616,6 +1614,10 @@ function renderParentHome(c){
   const u = STATE.currentUser;
   const children = getChildrenOf(u.id);
   c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;">Мої діти</h2>
+      <button class="btn btn-primary" onclick="showAddChildModal()">+ Додати дитину</button>
+    </div>
     <div class="grid grid-2">
       ${children.map(ch=>{
         const lessons = studentLessons(ch.id).filter(l=>l.status==='planned');
@@ -1625,7 +1627,7 @@ function renderParentHome(c){
         <div class="card card-hover">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
             <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
-            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade} клас</span></div>
+            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.subjects||''} клас</span></div>
           </div>
           <div class="grid grid-2" style="margin-bottom:14px;">
             <div class="badge">📅 ${lessons.length} уроків</div>
@@ -1634,9 +1636,68 @@ function renderParentHome(c){
           ${next ? `<p class="muted" style="margin-bottom:10px;">Наступний урок: <b>${esc(next.subject)}</b>, ${fmtDate(next.date)} о ${next.time}</p>` : ''}
           <button class="btn btn-outline btn-block btn-sm" onclick="openChildDetail('${ch.id}')">Детальніше →</button>
         </div>`;
-      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`}
+      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано. Натисніть "+ Додати дитину"</p></div>`}
     </div>
   `;
+}
+
+async function showAddChildModal(){
+  const html = `
+    <div id="addChildModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+      <div class="card" style="width:420px;max-width:95vw;padding:28px;">
+        <h3 style="margin-bottom:20px;font-size:18px;">👶 Додати дитину</h3>
+        <div class="form-group">
+          <label class="form-label">Ім'я дитини *</label>
+          <input class="form-input" id="childName" placeholder="Наприклад: Марія">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Клас</label>
+          <input class="form-input" id="childGrade" placeholder="Наприклад: 5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email дитини *</label>
+          <input class="form-input" id="childEmail" type="email" placeholder="child@gmail.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль для входу *</label>
+          <input class="form-input" id="childPassword" type="password" placeholder="Мінімум 6 символів">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-primary" style="flex:1" onclick="submitAddChild()">Додати</button>
+          <button class="btn btn-outline" onclick="document.getElementById('addChildModal').remove()">Скасувати</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function submitAddChild(){
+  const name = document.getElementById('childName').value.trim();
+  const grade = document.getElementById('childGrade').value.trim();
+  const email = document.getElementById('childEmail').value.trim();
+  const password = document.getElementById('childPassword').value;
+
+  if(!name || !email || !password){ showToast('Заповніть всі обов\'язкові поля','error'); return; }
+  if(password.length < 6){ showToast('Пароль мінімум 6 символів','error'); return; }
+
+  try {
+    let child;
+    if(API_MODE){
+      const resp = await apiFetch('/users/add-child', { method:'POST', body:{ name, grade, email, password } });
+      child = resp.child;
+      child.parentId = STATE.currentUser.id;
+      DB.users.push(child);
+    } else {
+      child = { id: uid(), name, email, role:'student', subjects: grade, parentId: STATE.currentUser.id, emailVerified: true };
+      DB.users.push(child);
+    }
+    document.getElementById('addChildModal').remove();
+    showToast('Дитину додано! ✅','success');
+    renderApp();
+  } catch(e){
+    showToast(e.message || 'Помилка','error');
+  }
 }
 
 function openChildDetail(childId){
@@ -3816,12 +3877,16 @@ async function syncUserDataFromBackend(user) {
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];
+    } else if (user.role === 'parent') {
+      DB.users = [user];
+      // Завантажуємо дітей з бекенду
+      const childrenResp = await apiFetch('/users/my-children').catch(() => ({ children: [] }));
+      const children = (childrenResp.children || []).map(ch => ({ ...ch, parentId: user.id }));
+      DB.users.push(...children);
     } else {
       DB.users = [user];
       // Додаємо вчителя
       if (user.teacher) DB.users.push(user.teacher);
-      // Додаємо дітей (для батьків)
-      if (user.children) DB.users.push(...user.children);
     }
 
     // Прогрес ігор

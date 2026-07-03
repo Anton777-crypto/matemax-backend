@@ -160,7 +160,14 @@ function initDB() {
     console.log(`👑 Адмін створений: ${adminEmail} / ${process.env.ADMIN_PASSWORD || 'admin123'}`);
   }
 
+  // Міграція: додаємо parent_id якщо не існує
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN parent_id TEXT');
+    console.log('✅ Міграція: додано parent_id');
+  } catch(e) { /* вже існує */ }
+
   console.log('✅ База даних готова:', DB_PATH);
 }
 
 module.exports = { getDB, initDB };
+// This line intentionally left blank
