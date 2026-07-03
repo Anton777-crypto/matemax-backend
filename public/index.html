@@ -1056,6 +1056,7 @@ const NAV_CONFIG = {
   ],
   admin: [
     {id:'home', icon:'🏠', label:'Головна'},
+    {id:'admin_parents', icon:'👨‍👩‍👧', label:'Батьки'},
     {id:'admin_students', icon:'🎒', label:'Учні'},
     {id:'admin_teachers', icon:'🍎', label:'Вчителі'},
     {id:'admin_schedule', icon:'📅', label:'Розклад'},
@@ -1067,7 +1068,7 @@ const PAGE_TITLES = {
   home:'Головна', schedule:'Розклад', materials:'Матеріали', games:'Ігри', homework:'Домашні завдання',
   payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
   homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
-  progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
+  progress:'Прогрес дитини', admin_parents:'Батьки та діти', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
   admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення',
 };
 
@@ -1165,7 +1166,7 @@ function renderPageContent(page){
       progress: renderParentProgress, payment: renderParentPayment,
     },
     admin: {
-      home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
+      home: renderAdminHome, admin_parents: renderAdminParents, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
       admin_schedule: renderAdminSchedule, admin_payments: renderAdminPayments,
     },
   };
@@ -1642,34 +1643,22 @@ function renderParentHome(c){
 }
 
 async function showAddChildModal(){
-  const html = `
-    <div id="addChildModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
-      <div class="card" style="width:420px;max-width:95vw;padding:28px;">
-        <h3 style="margin-bottom:20px;font-size:18px;">👶 Додати дитину</h3>
-        <div class="form-group">
-          <label class="form-label">Ім'я дитини *</label>
-          <input class="form-input" id="childName" placeholder="Наприклад: Марія">
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>👶 Додати дитину</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div style="background:var(--primary-light);border-radius:12px;padding:14px;margin-bottom:18px;font-size:13px;color:var(--primary);">
+          💡 Після додавання дитина зможе входити на платформу зі своїм email та паролем
         </div>
-        <div class="form-group">
-          <label class="form-label">Клас</label>
-          <input class="form-input" id="childGrade" placeholder="Наприклад: 5">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email дитини *</label>
-          <input class="form-input" id="childEmail" type="email" placeholder="child@gmail.com">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Пароль для входу *</label>
-          <input class="form-input" id="childPassword" type="password" placeholder="Мінімум 6 символів">
-        </div>
-        <div style="display:flex;gap:10px;margin-top:20px;">
-          <button class="btn btn-primary" style="flex:1" onclick="submitAddChild()">Додати</button>
-          <button class="btn btn-outline" onclick="document.getElementById('addChildModal').remove()">Скасувати</button>
-        </div>
+        <div class="field"><label>Ім'я дитини *</label><input id="childName" placeholder="Наприклад: Марія"></div>
+        <div class="field"><label>Клас</label><input id="childGrade" placeholder="Наприклад: 5"></div>
+        <div class="field"><label>Email дитини *</label><input id="childEmail" type="email" placeholder="child@gmail.com"></div>
+        <div class="field"><label>Пароль для входу *</label><input id="childPassword" type="password" placeholder="Мінімум 6 символів"></div>
+        <button class="btn btn-primary btn-block" id="addChildBtn">➕ Додати дитину</button>
       </div>
     </div>
-  `;
-  document.body.insertAdjacentHTML('beforeend', html);
+  `);
+  $('#addChildBtn').onclick = submitAddChild;
 }
 
 async function submitAddChild(){
@@ -1692,11 +1681,11 @@ async function submitAddChild(){
       child = { id: uid(), name, email, role:'student', subjects: grade, parentId: STATE.currentUser.id, emailVerified: true };
       DB.users.push(child);
     }
-    document.getElementById('addChildModal').remove();
-    showToast('Дитину додано! ✅','success');
+    closeModal();
+    toast('Дитину додано! ✅','success');
     renderApp();
   } catch(e){
-    showToast(e.message || 'Помилка','error');
+    toast(e.message || 'Помилка','error');
   }
 }
 
@@ -2561,6 +2550,193 @@ function renderAdminStudentProfileContent(){
   };
   const chatInput = $('#adminStudentChatInput');
   if(chatInput) chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') $('#adminStudentChatSend').click(); });
+}
+
+/* ---- Адмін: батьки та діти ---- */
+function renderAdminParents(c){
+  const parents = DB.users.filter(u=>u.role==='parent');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="color:var(--text-light);font-size:14px;">Всього батьків: <b>${parents.length}</b></div>
+      <button class="btn btn-accent btn-sm" onclick="openAdminAddParentModal()">➕ Додати батьків</button>
+    </div>
+    ${parents.length === 0 ? `
+      <div class="empty-state"><div class="ei">👨‍👩‍👧</div><p>Батьків ще немає</p></div>
+    ` : parents.map(p => {
+      const children = DB.users.filter(u => u.parentId === p.id || u.parent_id === p.id);
+      return `
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0;">${avatarLetter(p.name)}</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">${esc(p.name)}</div>
+              <div style="color:var(--text-light);font-size:13px;">📧 ${esc(p.email)}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-outline" onclick="openEditUserModal('${p.id}')">✏️ Редагувати</button>
+            <button class="btn btn-sm btn-outline" onclick="openChatModal('${p.id}')">💬</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteParent('${p.id}')">🗑️</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:13px;color:var(--text-light);margin-bottom:10px;">👶 Діти (${children.length}):</div>
+          ${children.length === 0 ? `<div style="color:var(--text-light);font-size:13px;">Дітей не додано</div>` :
+            `<div style="display:flex;flex-wrap:wrap;gap:10px;">
+              ${children.map(ch => {
+                const lessons = DB.lessons.filter(l=>l.studentId===ch.id);
+                const hw = DB.homework.filter(h=>h.studentId===ch.id);
+                const donehw = hw.filter(h=>h.done);
+                return `
+                <div class="card" style="flex:1;min-width:200px;box-shadow:none;border:1px solid var(--border);cursor:pointer;transition:box-shadow 0.2s;" onclick="openAdminChildProfile('${ch.id}')" onmouseover="this.style.boxShadow='0 4px 12px rgba(91,79,217,0.15)'" onmouseout="this.style.boxShadow='none'">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(ch.name)}</div>
+                    <div>
+                      <div style="font-weight:600;">${esc(ch.name)}</div>
+                      <div style="font-size:12px;color:var(--text-light);">${ch.subjects||'—'} клас</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <span class="badge">📅 ${lessons.length} уроків</span>
+                    <span class="badge badge-accent">✅ ${donehw.length}/${hw.length} ДЗ</span>
+                  </div>
+                  <div style="margin-top:10px;display:flex;gap:6px;">
+                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();openEditUserModal('${ch.id}')">✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteStudent('${ch.id}')">🗑️</button>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`
+          }
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function openAdminChildProfile(childId){
+  const ch = getUserById(childId);
+  if(!ch) return;
+  const lessons = DB.lessons.filter(l=>l.studentId===childId);
+  const hw = DB.homework.filter(h=>h.studentId===childId);
+  const donehw = hw.filter(h=>h.done);
+  const grades = hw.filter(h=>h.grade!=null).map(h=>h.grade);
+  const avg = grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(1) : '—';
+  openModal(`
+    <div class="modal-box" style="max-width:520px;">
+      <div class="modal-head"><h3>👶 ${esc(ch.name)}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">${avatarLetter(ch.name)}</div>
+          <div>
+            <div style="font-size:18px;font-weight:700;">${esc(ch.name)}</div>
+            <div style="color:var(--text-light);">${ch.subjects||'—'} клас · 📧 ${esc(ch.email||'—')}</div>
+          </div>
+        </div>
+        <div class="grid grid-3" style="margin-bottom:20px;">
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:var(--primary);">${lessons.length}</div>
+            <div style="font-size:12px;color:var(--text-light);">Уроків</div>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:var(--accent-dark);">${donehw.length}/${hw.length}</div>
+            <div style="font-size:12px;color:var(--text-light);">ДЗ виконано</div>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:var(--primary);">${avg}</div>
+            <div style="font-size:12px;color:var(--text-light);">Середній бал</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" style="flex:1" onclick="closeModal();openEditUserModal('${childId}')">✏️ Редагувати профіль</button>
+          <button class="btn btn-outline" onclick="closeModal()">Закрити</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+async function deleteParent(parentId){
+  const p = getUserById(parentId);
+  if(!p) return;
+  if(!confirm('Видалити батьків «'+p.name+'» та всіх їх дітей?')) return;
+  try {
+    await DataLayer.deleteUser(parentId);
+    DB.users = DB.users.filter(u=>u.id!==parentId && u.parentId!==parentId);
+    toast('Видалено','success');
+    renderPageContent(STATE.currentPage);
+  } catch(e){ toast(e.message||'Помилка','error'); }
+}
+
+function openAdminAddParentModal(){
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>➕ Додати батьків</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Ім'я батьків *</label><input id="newPName" placeholder="Ім'я Прізвище"></div>
+        <div class="field"><label>Email *</label><input id="newPEmail" type="email" placeholder="parent@email.com"></div>
+        <div class="field"><label>Тимчасовий пароль</label><input id="newPPass" value="123456" placeholder="Мінімум 6 символів"></div>
+        <div class="field"><label>Телефон</label><input id="newPPhone" placeholder="+380..."></div>
+        <button class="btn btn-primary btn-block" id="createParentBtn">Додати батьків</button>
+      </div>
+    </div>
+  `);
+  $('#createParentBtn').onclick = async ()=>{
+    const name = $('#newPName').value.trim();
+    const email = $('#newPEmail').value.trim().toLowerCase();
+    const pass = $('#newPPass').value || '123456';
+    const phone = $('#newPPhone').value.trim();
+    if(!name||!email){toast('Заповніть ім\'я та email','error');return;}
+    try {
+      const resp = await DataLayer.adminCreateUser({role:'parent',name,email,password:pass,phone});
+      toast('Батьків додано. Пароль: '+(resp.tempPassword||pass),'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){toast(e.message||'Помилка','error');}
+  };
+}
+
+/* ---- Редагування профілю будь-якого користувача ---- */
+function openEditUserModal(userId){
+  const u = getUserById(userId);
+  if(!u) return;
+  openModal(`
+    <div class="modal-box">
+      <div class="modal-head"><h3>✏️ Редагувати профіль</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Ім'я *</label><input id="editName" value="${esc(u.name||'')}"></div>
+        <div class="field"><label>Email</label><input id="editEmail" value="${esc(u.email||'')}" type="email"></div>
+        <div class="field"><label>Телефон</label><input id="editPhone" value="${esc(u.phone||'')}"></div>
+        ${u.role==='student'||u.role==='parent'&&false?`<div class="field"><label>Клас</label><input id="editGrade" value="${esc(u.subjects||u.grade||'')}"></div>`:''}
+        ${u.role==='teacher'?`<div class="field"><label>Спеціалізація</label><input id="editSubjects" value="${esc(u.subjects||u.subject||'Математика')}"></div>`:''}
+        <div class="field"><label>Новий пароль (залиште порожнім якщо не змінюєте)</label><input id="editPass" type="password" placeholder="Мінімум 6 символів"></div>
+        <button class="btn btn-primary btn-block" id="saveEditBtn">💾 Зберегти</button>
+      </div>
+    </div>
+  `);
+  $('#saveEditBtn').onclick = async ()=>{
+    const name = $('#editName').value.trim();
+    const phone = $('#editPhone').value.trim();
+    const pass = $('#editPass') ? $('#editPass').value : '';
+    const subjects = $('#editSubjects') ? $('#editSubjects').value.trim() : (u.subjects||u.subject||'');
+    const grade = $('#editGrade') ? $('#editGrade').value.trim() : (u.subjects||'');
+    if(!name){toast('Введіть ім\'я','error');return;}
+    try {
+      const updates = {name, phone, subjects: subjects||grade||u.subjects};
+      if(API_MODE){
+        await apiFetch('/users/'+userId, {method:'PATCH', body:updates});
+        if(pass && pass.length>=6){
+          await apiFetch('/users/admin-reset-password', {method:'POST', body:{userId, newPassword:pass}});
+        }
+      }
+      const user = DB.users.find(u=>u.id===userId);
+      if(user){ Object.assign(user, updates); }
+      toast('Профіль оновлено ✅','success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){toast(e.message||'Помилка','error');}
+  };
 }
 
 function renderAdminStudents(c){
@@ -3874,6 +4050,15 @@ async function syncUserDataFromBackend(user) {
       DB.users = usersResp.users || [];
       // Додаємо поточного юзера якщо нема
       if (!DB.users.find(u => u.id === user.id)) DB.users.push(user);
+      // Завантажуємо дітей для кожного батька
+      const parents = DB.users.filter(u=>u.role==='parent');
+      for(const p of parents){
+        try {
+          const cr = await apiFetch('/users/my-children').catch(()=>({children:[]}));
+        } catch(e){}
+      }
+      // Помічаємо parentId для дітей
+      DB.users.forEach(u=>{ if(u.parent_id) u.parentId = u.parent_id; });
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];

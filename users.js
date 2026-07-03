@@ -18,6 +18,8 @@ router.get('/', auth, (req, res) => {
     if (me.role === 'admin') {
       const q = role ? 'SELECT * FROM users WHERE role = ? ORDER BY created_at DESC' : 'SELECT * FROM users ORDER BY created_at DESC';
       users = role ? db.prepare(q).all(role) : db.prepare(q).all();
+      // Додаємо parentId для фронтенду
+      users = users.map(u => ({...u, parentId: u.parent_id}));
     } else if (me.role === 'teacher') {
       // Вчитель бачить своїх учнів
       users = db.prepare('SELECT * FROM users WHERE teacher_id = ? ORDER BY name').all(me.id);
