@@ -756,6 +756,8 @@ const DB = {
 
   // Повідомлення (чат): {id, fromId, toId, text, date, read}
   messages: [],
+  // Точні дані з бекенду по кожній розмові: otherId -> {lastMessage, lastDate, unread}
+  conversationsMeta: {},
 
   // Сповіщення для вчителя/учня: {id, userId, text, date, read, type}
   notifications: [],
@@ -1458,27 +1460,24 @@ function showTranscript(hwId){
 /* ----- Повідомлення (учень) ----- */
 function renderStudentMessages(c){
   const u = STATE.currentUser;
-  const teacher = getUserById(u.teacherId);
   const admin = DB.users.find(x=>x.role==='admin');
-  const contacts = [teacher, admin].filter(Boolean);
 
-  if(!contacts.length){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
+  if(!admin){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
 
-  c.innerHTML = `<div class="grid grid-2" id="msgContactsGrid" style="align-items:flex-start;"></div>`;
-  const grid = $('#msgContactsGrid');
-  grid.innerHTML = contacts.map(p=>{
-    const conv = getConversation(u.id, p.id);
-    const last = conv[conv.length-1];
-    const unread = unreadCountFor(u.id, p.id);
-    return `<div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openStudentConversation('${p.id}')">
-      ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:${p.role==='admin'?'var(--text)':'var(--primary)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(p.name)}</div>
-        <div><h4 style="font-size:14.5px;">${esc(p.name)}</h4><span class="muted">${p.role==='admin'?'Адміністрація':'Ваш вчитель'}</span></div>
+  const lastText = convPreviewText(admin.id);
+  const unread = unreadCountFor(u.id, admin.id);
+  c.innerHTML = `
+    <div class="grid grid-3">
+      <div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openStudentConversation('${admin.id}')">
+        ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(admin.name)}</div>
+          <div><h4 style="font-size:14.5px;">${esc(admin.name)}</h4><span class="muted">Адміністрація</span></div>
+        </div>
+        <p class="muted" style="font-size:13px;">${lastText ? esc(lastText.slice(0,70)) + (lastText.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
       </div>
-      <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
-    </div>`;
-  }).join('');
+    </div>
+  `;
 }
 
 function openStudentConversation(otherId){
@@ -1492,8 +1491,7 @@ function renderTeacherMessages(c){
 
   if(!admin){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
 
-  const conv = getConversation(u.id, admin.id);
-  const last = conv[conv.length-1];
+  const lastText = convPreviewText(admin.id);
   const unread = unreadCountFor(u.id, admin.id);
   c.innerHTML = `
     <p class="muted" style="margin-bottom:16px;">Питання щодо розкладу, учнів чи оплат — пишіть напряму адміністрації.</p>
@@ -1504,7 +1502,7 @@ function renderTeacherMessages(c){
           <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(admin.name)}</div>
           <div><h4 style="font-size:14.5px;">${esc(admin.name)}</h4><span class="muted">Адміністрація</span></div>
         </div>
-        <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+        <p class="muted" style="font-size:13px;">${lastText ? esc(lastText.slice(0,70)) + (lastText.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
       </div>
     </div>
   `;
@@ -1526,8 +1524,7 @@ function renderAdminMessages(c){
   const renderGrid = (gridEl, list)=>{
     if(!gridEl) return;
     gridEl.innerHTML = list.map(p=>{
-      const conv = getConversation(u.id, p.id);
-      const last = conv[conv.length-1];
+      const lastText = convPreviewText(p.id);
       const unread = unreadCountFor(u.id, p.id);
       return `<div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openChatModal('${p.id}')">
         ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
@@ -1535,7 +1532,7 @@ function renderAdminMessages(c){
           <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:${p.role==='teacher'?'var(--accent)':'var(--primary)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(p.name)}</div>
           <div><h4 style="font-size:14.5px;">${esc(p.name)}</h4><span class="muted">${p.role==='teacher'?'Вчитель':'Батьки'}</span></div>
         </div>
-        <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+        <p class="muted" style="font-size:13px;">${lastText ? esc(lastText.slice(0,70)) + (lastText.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
       </div>`;
     }).join('');
   };
@@ -1903,8 +1900,7 @@ function renderParentMessages(c){
 
   if(!admin){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
 
-  const conv = getConversation(u.id, admin.id);
-  const last = conv[conv.length-1];
+  const lastText = convPreviewText(admin.id);
   const unread = unreadCountFor(u.id, admin.id);
   c.innerHTML = `
     <p class="muted" style="margin-bottom:16px;">Питання щодо навчання, оплати чи розкладу дитини — пишіть напряму адміністрації школи.</p>
@@ -1915,7 +1911,7 @@ function renderParentMessages(c){
           <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(admin.name)}</div>
           <div><h4 style="font-size:14.5px;">${esc(admin.name)}</h4><span class="muted">Адміністрація</span></div>
         </div>
-        <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+        <p class="muted" style="font-size:13px;">${lastText ? esc(lastText.slice(0,70)) + (lastText.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
       </div>
     </div>
   `;
@@ -2752,6 +2748,12 @@ function sendMessage(fromId, toId, text){
   const msg = {id:uid(), fromId, toId, text, date:new Date().toISOString(), read:false};
   DB.messages.push(msg);
   addNotification(toId, `Нове повідомлення від ${esc(getUserById(fromId)?.name||'')}`, 'message');
+  // Оновлюємо локальний кеш прев'ю, щоб не показувати застарілий текст до перезавантаження
+  const otherId = fromId===STATE.currentUser?.id ? toId : fromId;
+  if(DB.conversationsMeta[otherId]){
+    DB.conversationsMeta[otherId].lastMessage = text;
+    DB.conversationsMeta[otherId].lastDate = msg.date;
+  }
   // Persist to backend async
   if(API_MODE) DataLayer.sendMsg(fromId, toId, text).catch(()=>{});
   return msg;
@@ -2761,7 +2763,19 @@ function getConversation(userA, userB){
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
 function unreadCountFor(userId, fromId){
+  const isMe = STATE.currentUser && STATE.currentUser.id===userId;
+  if(isMe && DB.conversationsMeta && Object.keys(DB.conversationsMeta).length){
+    if(fromId) return DB.conversationsMeta[fromId]?.unread || 0;
+    return Object.values(DB.conversationsMeta).reduce((sum,cv)=>sum+(cv.unread||0), 0);
+  }
   return DB.messages.filter(m=>m.toId===userId && (!fromId || m.fromId===fromId) && !m.read).length;
+}
+function convPreviewText(otherId){
+  const meta = DB.conversationsMeta && DB.conversationsMeta[otherId];
+  if(meta && meta.lastMessage) return meta.lastMessage;
+  const conv = getConversation(STATE.currentUser.id, otherId);
+  const last = conv[conv.length-1];
+  return last ? last.text : null;
 }
 function markConversationRead(userId, otherId){
   DB.messages.forEach(m=>{ if(m.toId===userId && m.fromId===otherId) m.read=true; });
@@ -2838,6 +2852,7 @@ function openChatModal(otherId, opts={}){
     API.getMessages(otherId).then(fresh=>{
       DB.messages = DB.messages.filter(msg => !((msg.fromId===me.id&&msg.toId===otherId)||(msg.fromId===otherId&&msg.toId===me.id)));
       DB.messages.push(...(fresh||[]));
+      if(DB.conversationsMeta[otherId]) DB.conversationsMeta[otherId].unread = 0;
       const thread = $('#chatThread');
       if(thread){ thread.innerHTML = renderThread(); scrollDown(); }
     }).catch(()=>{});
@@ -2973,42 +2988,73 @@ function openAdminAddStudentModal(){
       <div class="modal-head"><h3>➕ Додати учня</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
       <div class="modal-body">
         <div class="field"><label>Повне ім'я учня</label><input id="newStName" placeholder="Ім'я Прізвище"></div>
-        <div class="field"><label>Email (необов'язково)</label><input id="newStEmail" type="email" placeholder="student@email.com"></div>
+        <div class="field"><label>Email (для входу учня)</label><input id="newStEmail" type="email" placeholder="student@email.com"></div>
         <div class="field-row">
           <div class="field"><label>Клас</label>
             <select id="newStGrade"><option value="1">1 клас</option><option value="2">2 клас</option><option value="3">3 клас</option><option value="4">4 клас</option></select>
           </div>
           <div class="field"><label>Вчитель</label>
-            <select id="newStTeacher">${teachers.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">Немає вчителів</option>'}</select>
+            <select id="newStTeacher"><option value="">— не призначено —</option>${teachers.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>
           </div>
         </div>
         <button class="btn btn-primary btn-block" id="createStudentBtn">Додати учня до школи</button>
       </div>
     </div>
   `);
-  $('#createStudentBtn').onclick = ()=>{
+  $('#createStudentBtn').onclick = async ()=>{
     const name = $('#newStName').value.trim();
     const email = $('#newStEmail').value.trim().toLowerCase();
     const grade = parseInt($('#newStGrade').value);
     const teacherId = $('#newStTeacher').value || null;
     if(!name){ toast('Введіть ім\'я учня', 'error'); return; }
-    if(email && DB.users.some(u=>u.email.toLowerCase()===email)){ toast('Такий email вже є в системі', 'error'); return; }
-    const id = uid();
-    DB.users.push({id, role:'student', name, email:email||'', password:'111111', grade, parentId:null, teacherId, balance:0, trialUsed:false, plan:null, emailVerified:true, addedByAdmin:true});
-    toast('Учня додано до школи', 'success');
-    closeModal();
-    renderPageContent(STATE.currentPage);
+    if(!email){ toast('Вкажіть email — за ним учень входитиме в систему', 'error'); return; }
+
+    const btn = $('#createStudentBtn'); btn.disabled = true;
+    try {
+      if(API_MODE){
+        const result = await API.adminCreate({ email, name, role:'student', teacherId, grade });
+        DB.users.push(result.user);
+        closeModal();
+        openModal(`
+          <div class="modal-box" style="max-width:420px;">
+            <div class="modal-head"><h3>✅ Учня додано</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+            <div class="modal-body" style="text-align:center;">
+              <p class="muted" style="margin-bottom:14px;">Передайте ці дані учню для входу:</p>
+              <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:16px;">
+                <p><b>Email:</b> ${esc(email)}</p>
+                <p><b>Тимчасовий пароль:</b> ${esc(result.tempPassword)}</p>
+              </div>
+              <p class="hint" style="margin-top:10px;">Пароль можна змінити пізніше через «Скинути пароль».</p>
+            </div>
+          </div>
+        `);
+      } else {
+        const id = uid();
+        DB.users.push({id, role:'student', name, email, password:'111111', grade, parentId:null, teacherId, balance:0, trialUsed:false, plan:null, emailVerified:true, addedByAdmin:true});
+        toast('Учня додано до школи', 'success');
+        closeModal();
+      }
+      renderPageContent(STATE.currentPage);
+    } catch(e){
+      toast(e.message || 'Не вдалося додати учня', 'error');
+      btn.disabled = false;
+    }
   };
 }
 
-function deleteStudent(studentId){
+async function deleteStudent(studentId){
   const s = getUserById(studentId);
   if(!s) return;
   if(!confirm(`Видалити учня «${s.name}» зі школи? Усі його уроки, ДЗ та платежі залишаться в історії, але доступ буде закрито.`)) return;
-  DB.users = DB.users.filter(u=>u.id!==studentId);
-  toast('Учня видалено зі школи', 'success');
-  STATE.currentPage = 'admin_students';
-  renderApp();
+  try {
+    if(API_MODE) await API.deleteUser(studentId);
+    DB.users = DB.users.filter(u=>u.id!==studentId);
+    toast('Учня видалено зі школи', 'success');
+    STATE.currentPage = 'admin_students';
+    renderApp();
+  } catch(e){
+    toast(e.message || 'Не вдалося видалити учня', 'error');
+  }
 }
 
 function openAdminStudentProfile(studentId){
@@ -3587,14 +3633,40 @@ function wrongAnswersNear(correct, count=3, spread=10){
 }
 
 /* ============================================================
-   КАТАЛОГ 80 ІГОР: 4 теми × 20 ігор
+   КАТАЛОГ ІГОР: 22 теми програми (1-4 клас) × 4 гри = 88 ігор
+   Кожна тема жорстко прив'язана до свого класу за програмою.
+   Числа в кожній грі генеруються заново при кожному запуску/раунді.
    ============================================================ */
 const TOPICS = {
-  arithmetic: {label:'Арифметика', icon:'➕', color:'#5B4FD9', desc:'Додавання, віднімання, множення, ділення'},
-  geometry:   {label:'Геометрія', icon:'🔺', desc:'Фігури, периметр, площа', color:'#22C98E'},
-  numline:    {label:'Числова пряма', icon:'📏', desc:'Порівняння, порядок, координати', color:'#F5A623'},
-  multtable:  {label:'Таблиця множення', icon:'✖️', desc:'Тренування таблиці множення', color:'#E84855'},
-  peterson:   {label:'Математика за Петерсоном', icon:'🧩', desc:'Закономірності, рівняння, логічні задачі (1-4 клас)', color:'#8B5CF6'},
+  // ── 1 клас ──
+  shapes_relations:   {label:"Геометричні фігури. Відношення між предметами", icon:'🔺', color:'#5B4FD9', desc:'Довжина, висота, товщина. Просторові відношення', grade:1},
+  number_quantity:     {label:'Співвідношення числа та кількості предметів', icon:'🔢', color:'#22C98E', desc:'Порахуй предмети та знайди відповідне число', grade:1},
+  subtract_10:         {label:'Віднімання в межах 10', icon:'➖', color:'#F5A623', desc:'Просте віднімання для 1 класу', grade:1},
+  more_less:           {label:'Задачі на більше/менше', icon:'⚖️', color:'#E84855', desc:'Порівняння кількості предметів', grade:1},
+  logic_1:             {label:'Логічні задачі', icon:'🧩', color:'#8B5CF6', desc:'Знайди закономірність, зайве число', grade:1},
+
+  // ── 2 клас ──
+  numbers_100:         {label:'Числа першої сотні', icon:'💯', color:'#5B4FD9', desc:'Склад чисел від 1 до 100', grade:2},
+  place_value:         {label:'Розряди чисел', icon:'🔟', color:'#22C98E', desc:'Одноцифрові, двоцифрові, трицифрові числа', grade:2},
+  compare_numbers:     {label:'Порівняння чисел', icon:'⚖️', color:'#F5A623', desc:'Більше, менше, дорівнює', grade:2},
+  add_sub_100:         {label:'Додавання та віднімання в межах 100', icon:'➕', color:'#E84855', desc:'Обчислення в межах 100', grade:2},
+  even_odd:            {label:'Парні та непарні числа', icon:'🔀', color:'#8B5CF6', desc:'Визнач парність числа', grade:2},
+  quantities:          {label:'Величини', icon:'📏', color:'#3FA7D6', desc:'Сантиметри, метри, гривні, копійки', grade:2},
+  find_unknown:        {label:'Знаходження невідомого', icon:'❓', color:'#C145D6', desc:'Невідомий доданок, зменшуване, від\'ємник', grade:2},
+  add_sub_no_transition:{label:'Дод./відн. без переходу через розряд', icon:'✔️', color:'#22C98E', desc:'Обчислення без переходу через десяток', grade:2},
+  add_sub_with_transition:{label:'Дод./відн. з переходом через розряд', icon:'🔁', color:'#F5A623', desc:'Обчислення з переходом через десяток', grade:2},
+
+  // ── 3 клас ──
+  arithmetic_1000:     {label:'Арифметичні дії в межах 1000', icon:'🧮', color:'#5B4FD9', desc:'Додавання, віднімання, множення, ділення', grade:3},
+  fractions_intro:     {label:'Дроби', icon:'🍕', color:'#22C98E', desc:'Чисельник, знаменник, частини цілого', grade:3},
+  compound_problems:   {label:'Складені задачі', icon:'📖', color:'#F5A623', desc:'Задачі у 2-3 дії', grade:3},
+  geometry_3:          {label:'Геометрія', icon:'📐', color:'#E84855', desc:'Периметр, сторони, кути фігур', grade:3},
+
+  // ── 4 клас ──
+  equations:           {label:'Рівняння', icon:'🟰', color:'#8B5CF6', desc:'Знаходження невідомого x', grade:4},
+  fraction_of_number:  {label:'Знаходження дробу від числа', icon:'➗', color:'#3FA7D6', desc:'Обчисли частину від числа', grade:4},
+  perimeter_area:      {label:'Периметр і площа', icon:'📏', color:'#C145D6', desc:'Прямокутник і квадрат', grade:4},
+  division_single:     {label:'Ділення на одноцифрове число', icon:'➗', color:'#22C98E', desc:'Ділення без остачі', grade:4},
 };
 
 const MECHANICS = ['quiz4','trueFalse','flashCard','fillBlank','speedQuiz','matchPairs','sortGroups','sequence','countEmoji','compare','numline','balloons'];
@@ -3608,24 +3680,22 @@ const MECHANIC_ICONS = {
   sortGroups:'🗂️', sequence:'🔢', countEmoji:'🔍', compare:'⚖️', numline:'📏', balloons:'🎈',
 };
 
+// 4 надійні, універсально сумісні механіки — використовуються для кожної теми
+const CATALOG_MECHANICS = ['quiz4','trueFalse','flashCard','fillBlank'];
+
 function buildGameCatalog(){
   const list = [];
   Object.keys(TOPICS).forEach(topicKey=>{
-    for(let i=0;i<20;i++){
-      const mechanic = MECHANICS[i % MECHANICS.length];
-      // assign grade levels — distribute across 1-4, with topic-aware constraints
-      let grade;
-      if(topicKey==='multtable') grade = pick([2,3,4]); // multiplication starts grade 2
-      else grade = pick([1,2,3,4]);
-      const variantNum = Math.floor(i / MECHANICS.length) + 1;
+    const topicGrade = TOPICS[topicKey].grade;
+    CATALOG_MECHANICS.forEach((mechanic, i)=>{
       list.push({
         id: `g_${topicKey}_${i}`,
         topic: topicKey,
         mechanic,
-        grade,
-        title: `${MECHANIC_LABELS[mechanic]}: ${TOPICS[topicKey].label}${variantNum>1?' '+(variantNum):''}`,
+        grade: topicGrade,
+        title: `${MECHANIC_LABELS[mechanic]}: ${TOPICS[topicKey].label}`,
       });
-    }
+    });
   });
   return list;
 }
@@ -3823,74 +3893,170 @@ function renderRound(g){
 }
 
 /* ---- helper: generate a question payload based on topic ---- */
+const TOPIC_GENERATORS = {
+  // ── 1 клас ──
+  shapes_relations(){
+    const shapes = [
+      {name:'трикутник', sides:3}, {name:'квадрат', sides:4}, {name:'прямокутник', sides:4}, {name:"п'ятикутник", sides:5},
+    ];
+    const type = pick(['sides','length']);
+    if(type==='sides'){
+      const s = pick(shapes);
+      return {text:`Скільки сторін має ${s.name}?`, answer:s.sides};
+    }
+    const a = rnd(2,15), b = rnd(2,15);
+    return {text:`Стрічка А завдовжки ${a} см, стрічка Б завдовжки ${b} см. Яка довжина довшої стрічки?`, answer:Math.max(a,b)};
+  },
+  number_quantity(){
+    const n = rnd(1,10);
+    const emoji = pick(['⭐','🍎','🚗','⚽','🌸']);
+    return {text:`Порахуй: ${emoji.repeat(n)}. Скільки предметів?`, answer:n};
+  },
+  subtract_10(){
+    const a = rnd(2,10), b = rnd(0,a);
+    return {text:`${a} − ${b} = ?`, answer:a-b};
+  },
+  more_less(){
+    const a = rnd(1,10), b = rnd(1,10);
+    if(a===b) return {text:`У Марійки ${a} цукерки, у Петрика ${b} цукерок. У кого більше, якщо порахувати різницю? Введи різницю`, answer:0};
+    return {text:`У Марійки ${a} цукерки, у Петрика ${b} цукерок. На скільки більше цукерок у того, кого більше?`, answer:Math.abs(a-b)};
+  },
+  logic_1(){
+    const base = rnd(2,8);
+    const nums = [base, base+2, base+4, base+6];
+    const oddOne = base+1 + rnd(0,1)*2;
+    const set = shuffle([...nums.slice(0,3), oddOne]);
+    return {text:`Знайди зайве число: ${set.join(', ')}`, answer:oddOne};
+  },
+
+  // ── 2 клас ──
+  numbers_100(){
+    const tens = rnd(1,9), ones = rnd(0,9);
+    const type = pick(['compose','decompose']);
+    if(type==='compose') return {text:`Яке число складається з ${tens} десятків і ${ones} одиниць?`, answer:tens*10+ones};
+    const num = tens*10+ones;
+    return {text:`Скільки десятків у числі ${num}?`, answer:tens};
+  },
+  place_value(){
+    const n = pick([rnd(1,9), rnd(10,99), rnd(100,999)]);
+    return {text:`Скільки цифр у числі ${n}?`, answer:String(n).length};
+  },
+  compare_numbers(){
+    const a = rnd(1,100), b = rnd(1,100);
+    if(a===b) return {text:`Порівняй: ${a} і ${b}. Введи це число (вони рівні)`, answer:a};
+    return {text:`Яке число більше: ${a} чи ${b}?`, answer:Math.max(a,b)};
+  },
+  add_sub_100(){
+    const op = pick(['+','-']);
+    if(op==='+'){ const a=rnd(10,80), b=rnd(5,19); return {text:`${a} + ${b} = ?`, answer:a+b}; }
+    const a=rnd(20,100), b=rnd(5,a); return {text:`${a} − ${b} = ?`, answer:a-b};
+  },
+  even_odd(){
+    const nums = [rnd(1,50)*2, rnd(1,50)*2, rnd(0,49)*2+1];
+    const s = shuffle(nums);
+    return {text:`Яке з чисел непарне: ${s.join(', ')}?`, answer:nums[2]};
+  },
+  quantities(){
+    const type = pick(['cm_m','kop_hrn']);
+    if(type==='cm_m'){ const m = rnd(1,9); return {text:`Скільки сантиметрів у ${m} метрах?`, answer:m*100}; }
+    const h = rnd(1,9); return {text:`Скільки копійок у ${h} гривнях?`, answer:h*100};
+  },
+  find_unknown(){
+    const type = pick(['addend','minuend','subtrahend']);
+    if(type==='addend'){ const b=rnd(5,40), sum=rnd(b+5,90); return {text:`? + ${b} = ${sum}. Знайди невідомий доданок`, answer:sum-b}; }
+    if(type==='minuend'){ const b=rnd(5,40), diff=rnd(3,40); return {text:`? − ${b} = ${diff}. Знайди невідоме зменшуване`, answer:b+diff}; }
+    const a=rnd(20,90), diff=rnd(3,a-2); return {text:`${a} − ? = ${diff}. Знайди невідомий від'ємник`, answer:a-diff};
+  },
+  add_sub_no_transition(){
+    const op = pick(['+','-']);
+    if(op==='+'){
+      const aU=rnd(0,4), bU=rnd(0,4-aU), aT=rnd(1,8), bT=rnd(0,9-aT);
+      const a=aT*10+aU, b=bT*10+bU;
+      return {text:`${a} + ${b} = ? (без переходу через розряд)`, answer:a+b};
+    }
+    const aU=rnd(2,9), bU=rnd(0,aU), aT=rnd(1,9), bT=rnd(0,aT);
+    const a=aT*10+aU, b=bT*10+bU;
+    return {text:`${a} − ${b} = ? (без переходу через розряд)`, answer:a-b};
+  },
+  add_sub_with_transition(){
+    const op = pick(['+','-']);
+    if(op==='+'){
+      const aU=rnd(5,9), bU=rnd(10-aU,9), aT=rnd(1,7), bT=rnd(1,9-aT);
+      const a=aT*10+aU, b=bT*10+bU;
+      return {text:`${a} + ${b} = ? (з переходом через розряд)`, answer:a+b};
+    }
+    const aU=rnd(0,4), bU=rnd(aU+1,9), aT=rnd(2,9), bT=rnd(1,aT-1);
+    const a=aT*10+aU, b=bT*10+bU;
+    return {text:`${a} − ${b} = ? (з переходом через розряд)`, answer:a-b};
+  },
+
+  // ── 3 клас ──
+  arithmetic_1000(){
+    const op = pick(['+','-','×','÷']);
+    if(op==='+'){ const a=rnd(100,700), b=rnd(50,299); return {text:`${a} + ${b} = ?`, answer:a+b}; }
+    if(op==='-'){ const a=rnd(300,999), b=rnd(50,a); return {text:`${a} − ${b} = ?`, answer:a-b}; }
+    if(op==='×'){ const a=rnd(10,90), b=rnd(2,9); return {text:`${a} × ${b} = ?`, answer:a*b}; }
+    const b=rnd(2,9), q=rnd(10,100); return {text:`${b*q} ÷ ${b} = ?`, answer:q};
+  },
+  fractions_intro(){
+    const den = rnd(2,10);
+    const type = pick(['den','num']);
+    if(type==='den'){
+      return {text:`Пиріг розділили на рівні частини, кожна частина — 1/${den}. На скільки частин розділили пиріг?`, answer:den};
+    }
+    const num = rnd(1,den-1);
+    return {text:`У дробу ${num}/${den} — це знаменник ${den}. Який чисельник?`, answer:num};
+  },
+  compound_problems(){
+    const a = rnd(20,60), b = rnd(5,15), c = rnd(3,10);
+    const type = pick(['sub_add','add_sub']);
+    if(type==='sub_add'){
+      return {text:`Було ${a} яблук. Продали ${b}, потім привезли ще ${c}. Скільки яблук стало?`, answer:a-b+c};
+    }
+    return {text:`У класі ${a} учнів. ${b} пішли на олімпіаду, а ${c} — на змагання. Скільки учнів залишилось у класі?`, answer:a-b-c};
+  },
+  geometry_3(){
+    const type = pick(['perimeter3','perimeter4','angles']);
+    if(type==='perimeter3'){
+      const a=rnd(2,15), b=rnd(2,15), c=rnd(2,15);
+      return {text:`Трикутник має сторони ${a} см, ${b} см, ${c} см. Знайди периметр`, answer:a+b+c};
+    }
+    if(type==='perimeter4'){
+      const a=rnd(2,15), b=rnd(2,15), c=rnd(2,15), d=rnd(2,15);
+      return {text:`Чотирикутник має сторони ${a}, ${b}, ${c}, ${d} см. Знайди периметр`, answer:a+b+c+d};
+    }
+    const shape = pick([{name:'трикутник', angles:3},{name:'квадрат', angles:4},{name:"п'ятикутник", angles:5}]);
+    return {text:`Скільки кутів має ${shape.name}?`, answer:shape.angles};
+  },
+
+  // ── 4 клас ──
+  equations(){
+    const type = pick(['add','sub','mul']);
+    if(type==='add'){ const x=rnd(5,80), b=rnd(2,40); return {text:`x + ${b} = ${x+b}. Чому дорівнює x?`, answer:x}; }
+    if(type==='sub'){ const x=rnd(5,80), b=rnd(2,40); return {text:`x − ${b} = ${x}. Чому дорівнює x?`, answer:x+b}; }
+    const x=rnd(2,20), b=rnd(2,9); return {text:`x × ${b} = ${x*b}. Чому дорівнює x?`, answer:x};
+  },
+  fraction_of_number(){
+    const den = rnd(2,6), q = rnd(2,10), num = rnd(1,den-1)||1;
+    const n = den*q;
+    return {text:`Знайди ${num}/${den} від числа ${n}`, answer:num*q};
+  },
+  perimeter_area(){
+    const w = rnd(3,30), h = rnd(3,30);
+    const type = pick(['perimeter','area']);
+    if(type==='perimeter') return {text:`Прямокутник зі сторонами ${w} см і ${h} см. Знайди периметр`, answer:2*(w+h)};
+    return {text:`Прямокутник зі сторонами ${w} см і ${h} см. Знайди площу`, answer:w*h};
+  },
+  division_single(){
+    const d = rnd(2,9), q = rnd(4,90);
+    return {text:`${d*q} ÷ ${d} = ?`, answer:q};
+  },
+};
+
 function topicQuestion(topic, grade){
-  if(topic==='arithmetic') return genArithmeticProblem(grade);
-  if(topic==='multtable') return genMultTable(grade);
-  if(topic==='geometry') return genGeometryQuestion(grade);
-  if(topic==='numline') return genCompareNumbers(grade); // used loosely; numline mechanic has its own gen
-  if(topic==='peterson') return genPetersonQuestion(grade);
+  const gen = TOPIC_GENERATORS[topic];
+  if(gen) return gen(grade);
   return genArithmeticProblem(grade);
-}
-
-/* ---- Математика за методикою Л.Г. Петерсон: закономірності, рівняння, логічні задачі ---- */
-function genPetersonQuestion(grade){
-  const type = pick(['missing','sequence','word']);
-
-  if(grade===1){
-    if(type==='missing'){
-      const a = rnd(1,8), sum = rnd(a+1,10);
-      return {text:`${a} + ? = ${sum}`, answer: sum-a};
-    }
-    if(type==='sequence'){
-      const start = rnd(1,5), step = rnd(1,3);
-      const seq = [start, start+step, start+step*2];
-      return {text:`Продовж закономірність: ${seq.join(', ')}, ?`, answer: start+step*3};
-    }
-    const a = rnd(1,5), b = rnd(1,4);
-    return {text:`У кошику ${a} яблука, поклали ще ${b}. Скільки яблук стало?`, answer: a+b};
-  }
-
-  if(grade===2){
-    if(type==='missing'){
-      const b = rnd(2,9), sum = rnd(b+3,20);
-      return {text:`? + ${b} = ${sum}`, answer: sum-b};
-    }
-    if(type==='sequence'){
-      const start = rnd(2,10), step = rnd(2,5);
-      const seq = [start, start+step, start+step*2];
-      return {text:`Яке наступне число: ${seq.join(', ')}, ?`, answer: start+step*3};
-    }
-    const a = rnd(10,20), b = rnd(2,9);
-    return {text:`У класі ${a} учнів, ${b} пішли на змагання. Скільки залишилось?`, answer: a-b};
-  }
-
-  if(grade===3){
-    if(type==='missing'){
-      const x = rnd(5,30), b = rnd(2,20);
-      return {text:`x + ${b} = ${x+b}. Чому дорівнює x?`, answer: x};
-    }
-    if(type==='sequence'){
-      const start = rnd(3,15), step = rnd(3,8);
-      const seq = [start, start+step, start+step*2];
-      return {text:`Продовж послідовність: ${seq.join(', ')}, ?`, answer: start+step*3};
-    }
-    const a = rnd(20,60), b = rnd(2,9);
-    return {text:`Скільки буде ${a} − ${b} × 2?`, answer: a-b*2};
-  }
-
-  // grade 4
-  if(type==='missing'){
-    const x = rnd(10,50), b = rnd(5,30);
-    return {text:`x − ${b} = ${x}. Чому дорівнює x?`, answer: x+b};
-  }
-  if(type==='sequence'){
-    const start = rnd(5,20), step = rnd(4,10);
-    const seq = [start, start+step, start+step*2, start+step*3];
-    return {text:`Яке наступне число: ${seq.join(', ')}, ?`, answer: start+step*4};
-  }
-  const packs = rnd(3,9), perPack = rnd(4,12);
-  const extra = rnd(2,10);
-  return {text:`У ${packs} упаковках по ${perPack} зошитів, і ще ${extra} окремо. Скільки всього зошитів?`, answer: packs*perPack+extra};
 }
 
 /* ---- MECHANIC 1: quiz4 (4 варіанти) ---- */
@@ -4573,21 +4739,15 @@ async function syncUserDataFromBackend(user) {
       }
     }
 
-    // Прев'ю останніх повідомлень по всіх бесідах (повний тред підвантажиться при відкритті чату)
+    // Точні дані по кожній бесіді (для бейджа непрочитаних і прев'ю тексту)
     if (['admin', 'teacher', 'parent'].includes(user.role)) {
       try {
         const convos = await API.getConversations();
+        DB.conversationsMeta = {};
         (convos || []).forEach(cv => {
-          if (!cv.lastMessage) return;
-          const already = DB.messages.some(m => (m.fromId===user.id&&m.toId===cv.userId)||(m.fromId===cv.userId&&m.toId===user.id));
-          if (!already) {
-            DB.messages.push({
-              id: 'preview_' + cv.userId, fromId: cv.userId, toId: user.id,
-              text: cv.lastMessage, date: cv.lastDate, read: !cv.unread,
-            });
-          }
+          DB.conversationsMeta[cv.userId] = { lastMessage: cv.lastMessage, lastDate: cv.lastDate, unread: cv.unread || 0 };
         });
-      } catch (e) { /* ігноруємо — прев'ю не критичне */ }
+      } catch (e) { /* ігноруємо — бейджі не критичні */ }
     }
 
   } catch (e) {
@@ -4726,9 +4886,7 @@ const DataLayer = {
     if (API_MODE) {
       await API.sendMessage(toId, text).catch(() => {});
     }
-    const m = { id: uid(), fromId, toId, text, date: new Date().toISOString(), read: false };
-    DB.messages.push(m);
-    return m;
+    return { id: uid(), fromId, toId, text, date: new Date().toISOString(), read: false };
   },
   async saveGameScore(gameId, score, studentId) {
     if (API_MODE) await API.saveGameProgress(gameId, score, studentId).catch(() => {});

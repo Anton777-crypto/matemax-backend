@@ -66,7 +66,7 @@ router.get('/:id', auth, (req, res) => {
 // ── POST /api/users/admin-create ──────────────────────────────
 router.post('/admin-create', auth, adminOnly, async (req, res) => {
   try {
-    const { email, name, role = 'student', phone, password, teacherId } = req.body;
+    const { email, name, role = 'student', phone, password, teacherId, grade } = req.body;
     if (!email || !name) return res.status(400).json({ error: 'Email та ім\'я обов\'язкові' });
 
     const db = getDB();
@@ -78,9 +78,9 @@ router.post('/admin-create', auth, adminOnly, async (req, res) => {
     const password_hash = await bcrypt.hash(tempPassword, 10);
 
     db.prepare(`
-      INSERT INTO users (id, email, password_hash, name, role, phone, email_verified, teacher_id)
-      VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-    `).run(id, email.toLowerCase().trim(), password_hash, name.trim(), role, phone || null, teacherId || null);
+      INSERT INTO users (id, email, password_hash, name, role, phone, email_verified, teacher_id, grade)
+      VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).run(id, email.toLowerCase().trim(), password_hash, name.trim(), role, phone || null, teacherId || null, grade || null);
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
     addNotification(id, `Вітаємо в МатеМакс! Ваш акаунт створено. 🎉`, 'success');
