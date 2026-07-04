@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth } = require('../middleware/auth');
+const { addNotification } = require('../utils');
 
 // ── GET /api/messages/conversations ──────────────────────────
 router.get('/conversations', auth, (req, res) => {
@@ -95,6 +96,10 @@ router.post('/', auth, (req, res) => {
       .run(id, req.user.id, toId, text.trim());
 
     const message = db.prepare('SELECT * FROM messages WHERE id = ?').get(id);
+
+    const sender = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
+    addNotification(toId, `💬 Нове повідомлення від ${sender?.name || 'користувача'}`, 'message');
+
     res.json({
       message: {
         id: message.id,

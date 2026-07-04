@@ -78,8 +78,10 @@ function initDB() {
       id           TEXT PRIMARY KEY,
       teacher_id   TEXT NOT NULL,
       title        TEXT NOT NULL,
+      desc         TEXT,
       type         TEXT,
       url          TEXT,
+      file_name    TEXT,
       grades       TEXT DEFAULT '[]',
       subject      TEXT,
       uploaded_at  TEXT DEFAULT (date('now')),
@@ -178,6 +180,16 @@ function initDB() {
   ensureUserColumn('managed_by_parent', 'INTEGER DEFAULT 0');
   ensureUserColumn('activation_status', "TEXT DEFAULT 'active'");
   ensureUserColumn('grade', 'TEXT');
+
+  // ── Міграція: desc/file_name для materials, якщо їх ще немає ──
+  const materialCols = db.prepare('PRAGMA table_info(materials)').all().map(c => c.name);
+  const ensureMaterialColumn = (name, definition) => {
+    if (!materialCols.includes(name)) {
+      db.exec(`ALTER TABLE materials ADD COLUMN ${name} ${definition}`);
+    }
+  };
+  ensureMaterialColumn('desc', 'TEXT');
+  ensureMaterialColumn('file_name', 'TEXT');
 
   // Перевіряємо чи є адмін — якщо ні, створюємо дефолтного
   const adminExists = db.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get();

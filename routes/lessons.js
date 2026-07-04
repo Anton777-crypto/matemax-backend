@@ -5,6 +5,13 @@ const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
 const { addNotification, getChildIds } = require('../utils');
 
+// Дитина під керуванням батька не має логіна — сповіщення йдуть батькові
+function notifyStudentOrParent(db, studentId, text, type) {
+  const row = db.prepare('SELECT parent_id, managed_by_parent FROM users WHERE id = ?').get(studentId);
+  const target = (row && row.managed_by_parent && row.parent_id) ? row.parent_id : studentId;
+  addNotification(target, text, type);
+}
+
 function formatLesson(l) {
   return {
     id: l.id,
@@ -71,8 +78,12 @@ router.post('/', auth, teacherOrAdmin, (req, res) => {
 
     const lesson = db.prepare('SELECT * FROM lessons WHERE id = ?').get(id);
 
-    // Сповіщаємо учня
-    addNotification(studentId, `Новий урок призначено на ${date} о ${time} 📅`, 'lesson');
+    // Сповіщаємо учня (або батька, якщо дитина під керуванням батька)
+    notifyStudentOrParent(db, studentId, `Новий урок призначено на ${date} о ${time} 📅`, 'lesson');
+    // Якщо урок для вчителя створив хтось інший (адмін) — сповіщаємо і вчителя
+    if (effectiveTeacherId !== req.user.id) {
+      addNotification(effectiveTeacherId, `Адміністратор додав вам новий урок: ${date} о ${time}${trial ? ' (пробний)' : ''} 📅`, 'lesson');
+    }
 
     res.json({ lesson: formatLesson(lesson) });
   } catch (e) {
@@ -112,9 +123,15 @@ router.patch('/:id', auth, (req, res) => {
 
     const updated = db.prepare('SELECT * FROM lessons WHERE id = ?').get(req.params.id);
 
-    // Якщо урок позначено як завершений — сповіщаємо учня
+    // Якщо урок позначено як завершений — сповіщаємо учня/батька
     if (req.body.status === 'completed') {
-      addNotification(lesson.student_id, `Урок ${updated.date} завершено ✅`, 'lesson');
+      notifyStudentOrParent(db, lesson.student_id, `Урок ${updated.date} завершено ✅`, 'lesson');
+    }
+
+    // Якщо зміни (дата/час/статус) вносить не сам вчитель (тобто адмін) — сповіщаємо вчителя
+    const scheduleChanged = ['date', 'time', 'status'].some(k => req.body[k] !== undefined);
+    if (scheduleChanged && req.user.id !== lesson.teacher_id) {
+      addNotification(lesson.teacher_id, `Адміністратор оновив урок: ${updated.date} о ${updated.time}`, 'lesson');
     }
 
     res.json({ lesson: formatLesson(updated) });
@@ -136,6 +153,12 @@ router.delete('/:id', auth, teacherOrAdmin, (req, res) => {
     }
 
     db.prepare('DELETE FROM lessons WHERE id = ?').run(req.params.id);
+
+    if (req.user.id !== lesson.teacher_id) {
+      addNotification(lesson.teacher_id, `Урок "${lesson.subject}" (${lesson.date} о ${lesson.time}) скасовано адміністратором`, 'lesson');
+    }
+    notifyStudentOrParent(db, lesson.student_id, `Урок "${lesson.subject}" (${lesson.date} о ${lesson.time}) скасовано`, 'lesson');
+
     res.json({ message: 'Урок видалено' });
   } catch (e) {
     res.status(500).json({ error: e.message });

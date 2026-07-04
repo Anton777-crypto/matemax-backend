@@ -5,6 +5,13 @@ const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
 const { addNotification, getChildIds } = require('../utils');
 
+// Дитина під керуванням батька не має логіна — сповіщення йдуть батькові
+function notifyStudentOrParent(db, studentId, text, type) {
+  const row = db.prepare('SELECT parent_id, managed_by_parent FROM users WHERE id = ?').get(studentId);
+  const target = (row && row.managed_by_parent && row.parent_id) ? row.parent_id : studentId;
+  addNotification(target, text, type);
+}
+
 function formatHW(h) {
   return {
     id: h.id,
@@ -68,7 +75,7 @@ router.post('/', auth, teacherOrAdmin, (req, res) => {
            fileUrl || null, fileName || null, audioBase64 || null);
 
     const hw = db.prepare('SELECT * FROM homework WHERE id = ?').get(id);
-    addNotification(studentId, `Нове домашнє завдання: "${title}" 📚`, 'homework');
+    notifyStudentOrParent(db, studentId, `Нове домашнє завдання: "${title}" 📚`, 'homework');
 
     res.json({ homework: formatHW(hw) });
   } catch (e) {
@@ -85,8 +92,13 @@ router.patch('/:id', auth, (req, res) => {
     if (!hw) return res.status(404).json({ error: 'Завдання не знайдено' });
 
     const me = req.user;
-    // Учень може тільки позначати done/audioBase64; вчитель може ставити оцінку
-    if (me.role !== 'admin' && hw.teacher_id !== me.id && hw.student_id !== me.id) {
+    // Учень може тільки позначати done/audioBase64; вчитель може ставити оцінку;
+    // батько може діяти від імені своєї (керованої) дитини
+    const isOwnerParent = me.role === 'parent' && (() => {
+      const st = db.prepare('SELECT parent_id FROM users WHERE id = ?').get(hw.student_id);
+      return st && st.parent_id === me.id;
+    })();
+    if (me.role !== 'admin' && hw.teacher_id !== me.id && hw.student_id !== me.id && !isOwnerParent) {
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
@@ -94,12 +106,12 @@ router.patch('/:id', auth, (req, res) => {
     const vals = [];
 
     // Учень може відмітити виконання та прикріпити аудіо
-    if (req.body.done !== undefined && (me.role === 'student' || me.role === 'admin' || me.role === 'teacher')) {
+    if (req.body.done !== undefined && (me.role === 'student' || me.role === 'admin' || me.role === 'teacher' || me.role === 'parent')) {
       updates.push('done = ?'); vals.push(req.body.done ? 1 : 0);
       if (req.body.done) {
         updates.push('done_at = ?'); vals.push(new Date().toISOString());
         if (hw.teacher_id) {
-          addNotification(hw.teacher_id, `Учень виконав завдання "${hw.title}" ✅`, 'homework');
+      addNotification(hw.teacher_id, `Учень виконав завдання "${hw.title}" ✅`, 'homework');
         }
       } else {
         updates.push('done_at = ?'); vals.push(null);
@@ -119,7 +131,7 @@ router.patch('/:id', auth, (req, res) => {
     // Тільки вчитель/адмін може ставити оцінку
     if (req.body.grade !== undefined && ['teacher', 'admin'].includes(me.role)) {
       updates.push('grade = ?'); vals.push(req.body.grade);
-      addNotification(hw.student_id, `Ви отримали оцінку "${req.body.grade}" за завдання "${hw.title}" 🏆`, 'grade');
+      notifyStudentOrParent(db, hw.student_id, `Ви отримали оцінку "${req.body.grade}" за завдання "${hw.title}" 🏆`, 'grade');
     }
 
     if (!updates.length) return res.json({ homework: formatHW(hw) });
