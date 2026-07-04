@@ -296,7 +296,7 @@ tr:hover td{background:#FBFAFF;}
   width:140px;padding:14px;font-size:20px;text-align:center;border:2.5px solid var(--border);border-radius:12px;font-weight:700;
 }
 .gp-input-row input:focus{border-color:var(--primary);}
-.flashcard-wrap{perspective:1000px;width:320px;height:220px;margin:0 auto;}
+.flashcard-wrap{perspective:1000px;width:320px;max-width:100%;height:220px;margin:0 auto;}
 .flashcard-inner{width:100%;height:100%;position:relative;transition:transform .5s;transform-style:preserve-3d;cursor:pointer;}
 .flashcard-inner.flipped{transform:rotateY(180deg);}
 .flashcard-face{
@@ -392,12 +392,90 @@ tr:hover td{background:#FBFAFF;}
 .hw-card.done{border-left-color:var(--accent);}
 .audio-player{width:100%;margin-top:10px;}
 
+/* ===== SIDEBAR OVERLAY (мобільне затемнення при відкритому меню) ===== */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(43,42,76,.45);z-index:49;
+}
+.sidebar-overlay.show{display:block;animation:fadeIn .15s ease;}
+
+/* =========================================================================
+   АДАПТИВНІСТЬ: ПЛАНШЕТИ (≤1024px)
+   ========================================================================= */
+@media(max-width:1024px){
+  .sidebar{width:240px;}
+  .main-area{margin-left:240px;}
+  .page-content{padding:24px 22px 50px;}
+  .topbar{padding:16px 22px;}
+}
+
+/* =========================================================================
+   АДАПТИВНІСТЬ: ПЛАНШЕТИ-ПОРТРЕТ / МАЛЕНЬКІ ПЛАНШЕТИ (≤920px)
+   Сайдбар ховається за гамбургер-меню
+   ========================================================================= */
 @media(max-width:920px){
-  .sidebar{transform:translateX(-100%);}
-  .sidebar.open{transform:translateX(0);}
+  .sidebar{transform:translateX(-100%);width:280px;max-width:82vw;}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--shadow-lg);}
   .main-area{margin-left:0;}
   .menu-toggle{display:flex;}
   .grid-2{grid-template-columns:1fr;}
+  .topbar{padding:14px 18px;}
+  .page-content{padding:20px 18px 50px;}
+}
+
+/* =========================================================================
+   АДАПТИВНІСТЬ: ТЕЛЕФОНИ (≤600px)
+   ========================================================================= */
+@media(max-width:600px){
+  /* Не даємо iOS автоматично зумити при фокусі на полях — мінімум 16px */
+  input, select, textarea{font-size:16px !important;}
+
+  .topbar{padding:12px 14px;}
+  .topbar h1{font-size:16px;}
+  .topbar .badge{display:none;} /* дата в шапці не критична на телефоні */
+  .page-content{padding:14px 12px 40px;}
+
+  .card{padding:16px;border-radius:14px;}
+  .section-title{font-size:16.5px;margin-bottom:12px;}
+
+  .btn{padding:11px 16px;font-size:14px;}
+  .btn-sm{padding:8px 12px;font-size:12.5px;}
+
+  .modal-overlay{padding:0;align-items:flex-end;}
+  .modal-box{
+    max-width:100% !important;width:100% !important;border-radius:18px 18px 0 0;max-height:92vh;
+    animation:slideUpModal .2s ease;
+  }
+  .modal-box.wide{max-width:100% !important;}
+  .modal-head{padding:16px 18px;}
+  .modal-body{padding:16px 18px;}
+  .modal-foot{padding:12px 18px;flex-wrap:wrap;}
+
+  .auth-screen{padding:0;align-items:stretch;}
+  .auth-box{max-width:100%;border-radius:0;min-height:100vh;padding:28px 20px;display:flex;flex-direction:column;justify-content:center;}
+
+  .stat-card{flex-wrap:wrap;}
+  .table-wrap table{font-size:13px;}
+  .table-wrap th, .table-wrap td{padding:8px 10px !important;white-space:nowrap;}
+
+  #toastBox{left:12px;right:12px;bottom:16px;}
+  .toast{min-width:0;width:100%;}
+
+  .flashcard-wrap{width:100%;max-width:300px;height:190px;}
+  .gp-input-row input{width:110px;padding:12px;font-size:18px;}
+  .gp-card{padding:22px 18px;border-radius:18px;}
+  .emoji-grid{font-size:26px;}
+
+  .sidebar-brand{padding:18px 18px 14px;}
+  .sidebar-user{margin:12px 14px;padding:12px;}
+  .nav-item{padding:13px 14px;font-size:14px;}
+}
+
+@keyframes slideUpModal{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* Дуже вузькі екрани (складані/старі телефони) */
+@media(max-width:360px){
+  .grid-3{grid-template-columns:1fr;}
+  .sidebar{width:88vw;}
 }
 </style>
 </head>
@@ -565,8 +643,8 @@ const API = {
     const d = await apiFetch('/payments', { method: 'POST', body: payload });
     return d.payment;
   },
-  async updatePayment(id, status) {
-    const d = await apiFetch('/payments/' + id, { method: 'PATCH', body: { status } });
+  async updatePayment(id, status, comment) {
+    const d = await apiFetch('/payments/' + id, { method: 'PATCH', body: { status, comment } });
     return d.payment;
   },
 
@@ -658,20 +736,26 @@ const DB = {
   notifications: [],
 
   // ====================================================================
-  // РЕКВІЗИТИ ШКОЛИ ДЛЯ ОПЛАТИ — ЗАМІНІТЬ НА ВЛАСНІ РЕАЛЬНІ ДАНІ
-  // Усі поля нижче, що починаються з "ЗАМІНІТЬ_НА_", є заглушками.
+  // РЕКВІЗИТИ ШКОЛИ ДЛЯ ОПЛАТИ
+  // Курси нижче — орієнтовні, онови вручну за потреби (щоб показувати суму
+  // у гривнях поряд з EUR/USD). Самі перекази йдуть в EUR або USD на IBAN нижче.
   // ====================================================================
   paymentInfo: {
-    bankName: 'ЗАМІНІТЬ_НА_НАЗВУ_БАНКУ',          // напр. 'Banca Transilvania' або 'BCR'
-    iban: 'RO00 XXXX 0000 0000 0000 0000',          // ваш реальний румунський IBAN (формат RO)
-    swift: 'ЗАМІНІТЬ_НА_SWIFT_BIC',                 // напр. 'BTRLRO22' — обов'язково для переказів з-за кордону (з України)
-    accountCurrency: 'EUR',                          // валюта рахунку: 'EUR' або 'RON'
-    edrpou: 'ЗАМІНІТЬ_НА_CUI_АБО_ЄДРПОУ',           // код компанії/ФОП (CUI — якщо SRL/PFA в Румунії)
-    recipient: 'ЗАМІНІТЬ_НА_ПОВНУ_НАЗВУ_ОТРИМУВАЧА', // напр. 'MATEMAX SRL' або ПІБ
-    cardNumber: 'ЗАМІНІТЬ_НА_НОМЕР_КАРТКИ',         // якщо приймаєте картку — номер з пробілами
-    paypalEmail: 'ЗАМІНІТЬ_НА_PAYPAL_EMAIL',        // email вашого PayPal-акаунту
-    // Орієнтовний курс для показу суми в EUR поряд з грн (онови вручну за потреби)
-    uahToEurRate: 45.0,  // 1 EUR ≈ 45 грн — ЗАМІНІТЬ на актуальний курс
+    recipient: 'ЗВЄРЄВА АНАСТАСІЯ ГЕННАДІЇВНА',
+    bankName: 'Banca Transilvania (BT)',
+    swift: 'BTRLRO22',
+    telegramContact: '@AnastasiiaZver',
+    telegramPhone: '+380 66 190 65 79',
+    // Рахунки за валютами — учень обирає, в якій валюті йому зручніше платити
+    accounts: {
+      EUR: { iban: 'RO29BTRLEURCRT0684738501' },
+      USD: { iban: 'RO33BTRLUSDCRT0684738501' },
+    },
+    // Для гривні окремого рахунку немає — реквізити картки видаються за запитом у Telegram
+    uahNote: 'Для оплати карткою в гривнях напишіть у Telegram — надішлемо номер картки.',
+    // Орієнтовні курси для показу суми в EUR/USD поряд з грн (онови вручну за потреби)
+    uahToEurRate: 45.0,  // 1 EUR ≈ 45 грн
+    uahToUsdRate: 41.5,  // 1 USD ≈ 41.5 грн
   },
 
   // Токени для верифікації email при реєстрації: {token: registrationPayload}
@@ -682,7 +766,7 @@ const STATE = {
   currentUser: null,
   currentPage: 'home',
   authMode: 'login', // login | register
-  authRole: 'parent',
+  authRole: 'student',
   gameFilter: { topic: null, grade: null },
   activeGameSession: null,
   adminViewingStudent: null, // studentId — для перегляду кабінету учня адміном
@@ -735,7 +819,9 @@ function getStudentsOf(teacherId){
 }
 function getUserById(id){ return DB.users.find(u=>u.id===id); }
 function getChildrenOf(parentId){
-  return DB.users.filter(u => u.parentId === parentId || u.parent_id === parentId);
+  const p = getUserById(parentId);
+  if(!p) return [];
+  return (p.children||[]).map(getUserById).filter(Boolean);
 }
 
 /* ---------------------------- AUTH ---------------------------- */
@@ -834,7 +920,7 @@ function renderRegisterForm(){
     <div class="field">
       <label>Я реєструюсь як:</label>
       <div class="role-pick">
-        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin' && k!=='student').map(([k,m])=>`
+        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin').map(([k,m])=>`
           <div class="role-pick-item ${role===k?'active':''}" data-role="${k}">
             <span class="ric">${m.icon}</span>${m.label}
           </div>`).join('')}
@@ -1056,7 +1142,6 @@ const NAV_CONFIG = {
   ],
   admin: [
     {id:'home', icon:'🏠', label:'Головна'},
-    {id:'admin_parents', icon:'👨‍👩‍👧', label:'Батьки'},
     {id:'admin_students', icon:'🎒', label:'Учні'},
     {id:'admin_teachers', icon:'🍎', label:'Вчителі'},
     {id:'admin_schedule', icon:'📅', label:'Розклад'},
@@ -1068,7 +1153,7 @@ const PAGE_TITLES = {
   home:'Головна', schedule:'Розклад', materials:'Матеріали', games:'Ігри', homework:'Домашні завдання',
   payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
   homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
-  progress:'Прогрес дитини', admin_parents:'Батьки та діти', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
+  progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
   admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення',
 };
 
@@ -1083,6 +1168,7 @@ function renderApp(){
 
   root.innerHTML = `
     <div class="app-shell">
+      <div class="sidebar-overlay" id="sidebarOverlay"></div>
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
           <div class="logo-mark">M</div>
@@ -1128,7 +1214,14 @@ function renderApp(){
   });
 
   $('#logoutBtn').onclick = logout;
-  $('#menuToggle').onclick = ()=>{ $('#sidebar').classList.toggle('open'); };
+  const toggleSidebar = (forceClose)=>{
+    const sb = $('#sidebar'), ov = $('#sidebarOverlay');
+    const willOpen = forceClose ? false : !sb.classList.contains('open');
+    sb.classList.toggle('open', willOpen);
+    ov.classList.toggle('show', willOpen);
+  };
+  $('#menuToggle').onclick = ()=>toggleSidebar();
+  $('#sidebarOverlay').onclick = ()=>toggleSidebar(true);
 
   setActivePage(user.role);
 }
@@ -1166,7 +1259,7 @@ function renderPageContent(page){
       progress: renderParentProgress, payment: renderParentPayment,
     },
     admin: {
-      home: renderAdminHome, admin_parents: renderAdminParents, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
+      home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
       admin_schedule: renderAdminSchedule, admin_payments: renderAdminPayments,
     },
   };
@@ -1439,30 +1532,55 @@ function fmtEur(uahAmount){
   return '≈ ' + eur.toLocaleString('uk-UA', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' EUR';
 }
 
+// Конвертує суму з грн у обрану валюту та повертає число, округлене до 2 знаків
+function convertFromUah(uahAmount, currency){
+  if(currency==='UAH') return Math.round(uahAmount);
+  const rate = currency==='EUR' ? (DB.paymentInfo.uahToEurRate||45) : (DB.paymentInfo.uahToUsdRate||41.5);
+  return Math.round((uahAmount / rate) * 100) / 100;
+}
+
+function fmtCurrency(amount, currency){
+  const symbols = {UAH:'грн', EUR:'EUR', USD:'USD'};
+  return amount.toLocaleString('uk-UA', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' ' + (symbols[currency]||currency);
+}
+
+function copyToClipboard(text, label){
+  navigator.clipboard.writeText(text).then(()=>{
+    toast((label||'Скопійовано')+' 📋', 'success');
+  }).catch(()=>{
+    toast('Не вдалося скопіювати, виділіть текст вручну', 'error');
+  });
+}
+
 function renderPaymentInfoCard(){
   const pi = DB.paymentInfo;
+  const acc = pi.accounts || {};
   return `
     <div class="card" style="margin-bottom:18px;">
       <div class="section-title">🏦 Реквізити для оплати</div>
-      <p class="muted" style="margin-bottom:14px;">Оберіть зручний спосіб переказу коштів. Після оплати натисніть «Я оплатив(ла)» нижче — адміністратор підтвердить надходження.</p>
+      <p class="muted" style="margin-bottom:14px;">Оберіть зручну валюту нижче та скопіюйте реквізити. Заплатити можна через застосунок свого банку. Після оплати прикріпіть квитанцію — адміністратор підтвердить надходження.</p>
       <div class="grid grid-3">
+        ${acc.EUR ? `
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">💳 Банківська картка</div>
-          <b style="font-size:15px;letter-spacing:1px;">${esc(pi.cardNumber)}</b>
-          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}</p>
-        </div>
+          <div class="muted" style="margin-bottom:6px;">🇪🇺 Переказ в EUR</div>
+          <b style="font-size:13px;word-break:break-all;">${esc(acc.EUR.iban)}</b>
+          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
+          <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.EUR.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
+        </div>` : ''}
+        ${acc.USD ? `
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">🏦 IBAN-переказ (${esc(pi.accountCurrency)})</div>
-          <b style="font-size:13px;word-break:break-all;">${esc(pi.iban)}</b>
-          <p class="muted" style="margin-top:6px;">${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b><br>Код компанії: ${esc(pi.edrpou)}</p>
-          <p class="hint" style="margin-top:8px;color:var(--warning);">⚠️ Для переказу з-за кордону (напр. з України) обов'язково вкажіть SWIFT/BIC код банку</p>
-        </div>
+          <div class="muted" style="margin-bottom:6px;">🇺🇸 Переказ в USD</div>
+          <b style="font-size:13px;word-break:break-all;">${esc(acc.USD.iban)}</b>
+          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
+          <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.USD.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
+        </div>` : ''}
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">🅿️ PayPal</div>
-          <b style="font-size:14px;">${esc(pi.paypalEmail)}</b>
-          <p class="muted" style="margin-top:6px;">Вкажіть ПІБ дитини в коментарі</p>
+          <div class="muted" style="margin-bottom:6px;">💳 Оплата в гривні</div>
+          <p class="muted" style="margin-top:6px;">${esc(pi.uahNote||'')}</p>
+          <a class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" href="https://t.me/${esc((pi.telegramContact||'').replace('@',''))}" target="_blank" rel="noopener">💬 Написати в Telegram</a>
         </div>
       </div>
+      <p class="hint" style="margin-top:12px;color:var(--warning);">⚠️ Для переказу з-за кордону (напр. з України) обов'язково вкажіть SWIFT/BIC код банку. Питання щодо оплати — Telegram ${esc(pi.telegramContact||'')}.</p>
     </div>
   `;
 }
@@ -1535,17 +1653,21 @@ function renderPaymentView(c, student){
     <div class="card">
       <div class="section-title">🧾 Історія платежів</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Дата</th><th>Опис</th><th>Сума</th><th>Статус</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Опис</th><th>Сума</th><th>Квитанція</th><th>Статус</th></tr></thead>
         <tbody>
           ${payments.map(p=>{
             const badge = p.status==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
-              : p.status==='rejected' ? '<span class="badge badge-danger">Уточнюється</span>'
+              : p.status==='rejected' ? '<span class="badge badge-danger">Не підтверджено</span>'
               : '<span class="badge badge-warn">Очікує підтвердження</span>';
-            return `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.desc)}</td><td>${fmtMoney(p.amount)}</td><td>${badge}</td></tr>`;
+            const amountStr = p.currency && p.currency!=='UAH' ? fmtCurrency(p.amount, p.currency) : fmtMoney(p.amount);
+            const receiptCell = p.receiptUrl ? `<a href="${esc(p.receiptUrl)}" target="_blank" rel="noopener">📎 Переглянути</a>` : '—';
+            const comment = p.status==='rejected' && p.adminComment ? `<div class="muted" style="font-size:12px;margin-top:4px;">${esc(p.adminComment)}</div>` : '';
+            return `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.desc)}</td><td>${amountStr}</td><td>${receiptCell}</td><td>${badge}${comment}</td></tr>`;
           }).join('')
-            || `<tr><td colspan="4" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
+            || `<tr><td colspan="5" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
         </tbody>
       </table></div>
+      <p class="muted" style="margin-top:10px;font-size:12.5px;">Якщо оплату не підтверджено — напишіть у Telegram ${esc(DB.paymentInfo.telegramContact||'')} для уточнення.</p>
     </div>
   `;
 }
@@ -1559,35 +1681,140 @@ function claimTrial(studentId){
   renderPageContent(STATE.currentPage);
 }
 
+let PAY_MODAL_STATE = null; // {studentId, amountUah, desc, lessonsCount, currency, receiptBase64, receiptFilename}
+
 function payNow(studentId, amount, desc, lessonsCount){
   const s = getUserById(studentId);
   if(!s) return;
+  PAY_MODAL_STATE = { studentId, amountUah:amount, desc, lessonsCount:lessonsCount||0, currency:'UAH', receiptBase64:null, receiptFilename:null };
   openModal(`
-    <div class="modal-box" style="max-width:420px;">
+    <div class="modal-box" style="max-width:460px;">
       <div class="modal-head"><h3>💳 Оплата</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body" style="text-align:center;">
-        <p class="muted" style="margin-bottom:8px;">${esc(desc)}</p>
-        <p style="font-size:30px;font-weight:800;color:var(--primary);margin-bottom:18px;">${fmtMoney(amount)}</p>
-        <p class="muted" style="margin-bottom:14px;text-align:left;">Перекажіть кошти на один з наших реквізитів (картка, IBAN або PayPal — дивіться розділ «Реквізити для оплати»), а потім натисніть кнопку нижче. Адміністратор підтвердить надходження коштів.</p>
-        <button class="btn btn-accent btn-block" onclick="confirmPayment('${studentId}', ${amount}, '${esc(desc).replace(/'/g,"\\'")}', ${lessonsCount||0})">✅ Я оплатив(ла), повідомити адміністратора</button>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:4px;text-align:center;">${esc(desc)}</p>
+        <p id="payAmountDisplay" style="font-size:28px;font-weight:800;color:var(--primary);margin-bottom:16px;text-align:center;">${fmtMoney(amount)}</p>
+
+        <div class="game-filterbar" id="payCurrencyTabs" style="justify-content:center;margin-bottom:14px;">
+          <div class="chip active" data-cur="UAH">Гривня</div>
+          <div class="chip" data-cur="EUR">EUR</div>
+          <div class="chip" data-cur="USD">USD</div>
+        </div>
+
+        <div id="payRequisitesBox" style="margin-bottom:16px;"></div>
+
+        <div class="field" style="margin-bottom:14px;">
+          <label>Квитанція або скріншот оплати</label>
+          <input type="file" id="payReceiptInput" accept="image/*,.pdf" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:10px;">
+          <div id="payReceiptPreview" class="muted" style="margin-top:6px;font-size:12.5px;"></div>
+        </div>
+
+        <button class="btn btn-accent btn-block" id="payConfirmBtn">✅ Я оплатив(ла), повідомити адміністратора</button>
       </div>
     </div>
-  `);
+  `, {persistent:true});
+
+  const renderRequisites = ()=>{
+    const box = $('#payRequisitesBox');
+    const pi = DB.paymentInfo;
+    const cur = PAY_MODAL_STATE.currency;
+    if(cur==='UAH'){
+      box.innerHTML = `<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+        <p class="muted">${esc(pi.uahNote||'')}</p>
+        <a class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" href="https://t.me/${esc((pi.telegramContact||'').replace('@',''))}" target="_blank" rel="noopener">💬 Написати в Telegram</a>
+      </div>`;
+    } else {
+      const acc = (pi.accounts||{})[cur];
+      if(!acc){ box.innerHTML = `<p class="muted">Реквізити тимчасово недоступні, напишіть в Telegram ${esc(pi.telegramContact||'')}</p>`; return; }
+      box.innerHTML = `<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+        <div class="muted" style="margin-bottom:6px;">IBAN (${cur})</div>
+        <b style="font-size:13px;word-break:break-all;">${esc(acc.iban)}</b>
+        <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
+        <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
+      </div>`;
+    }
+  };
+  renderRequisites();
+
+  $('#payCurrencyTabs').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.chip');
+    if(!chip) return;
+    document.querySelectorAll('#payCurrencyTabs .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    const cur = chip.dataset.cur;
+    PAY_MODAL_STATE.currency = cur;
+    const converted = convertFromUah(amount, cur);
+    $('#payAmountDisplay').textContent = fmtCurrency(converted, cur);
+    renderRequisites();
+  });
+
+  $('#payReceiptInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 10*1024*1024){
+      toast('Файл занадто великий (максимум 10MB)', 'error');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      PAY_MODAL_STATE.receiptBase64 = reader.result;
+      PAY_MODAL_STATE.receiptFilename = file.name;
+      $('#payReceiptPreview').textContent = '✅ Прикріплено: ' + file.name;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('#payConfirmBtn').onclick = submitPaymentProof;
 }
 
-function confirmPayment(studentId, amount, desc, lessonsCount){
-  const s = getUserById(studentId);
-  if(!s) return;
-  DB.payments.push({id:uid(), studentId, parentId:s.parentId, date:new Date().toISOString().slice(0,10), amount, desc, status:'pending'});
-  if(lessonsCount>0){
-    const prevRemaining = s.plan ? planRemainingLessons(s) : 0;
-    s.plan = {label:desc, totalLessons:(planUsedLessons(s)) + prevRemaining + lessonsCount};
+async function submitPaymentProof(){
+  const st = PAY_MODAL_STATE;
+  if(!st) return;
+  if(!st.receiptBase64){
+    toast('Прикріпіть квитанцію або скріншот оплати', 'error');
+    return;
   }
-  const admin = DB.users.find(u=>u.role==='admin');
-  if(admin) addNotification(admin.id, `${s.name}: нова оплата "${desc}" на суму ${fmtMoney(amount)} очікує підтвердження`, 'payment');
-  closeModal();
-  toast('Дякуємо! Оплату передано на підтвердження адміністратору 🎉', 'success');
-  renderPageContent(STATE.currentPage);
+  const s = getUserById(st.studentId);
+  if(!s) return;
+
+  const amountInCurrency = convertFromUah(st.amountUah, st.currency);
+  const btn = $('#payConfirmBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Надсилаємо…'; }
+
+  try {
+    const payload = {
+      studentId: st.studentId,
+      teacherId: s.teacherId || null,
+      amount: amountInCurrency,
+      currency: st.currency,
+      lessons: st.lessonsCount,
+      desc: st.desc,
+      receiptBase64: st.receiptBase64,
+      receiptFilename: st.receiptFilename,
+    };
+    const payment = await DataLayer.createPayment(payload);
+
+    if(st.lessonsCount>0){
+      const prevRemaining = s.plan ? planRemainingLessons(s) : 0;
+      s.plan = {label:st.desc, totalLessons:(planUsedLessons(s)) + prevRemaining + st.lessonsCount};
+    }
+
+    // У демо-режимі (без бекенду) сповіщення адмінам створюємо самі —
+    // у боевому режимі це вже робить сервер.
+    if(!API_MODE){
+      DB.users.filter(u=>u.role==='admin').forEach(admin=>{
+        addNotification(admin.id, `${s.name}: нова оплата "${st.desc}" на суму ${fmtCurrency(amountInCurrency, st.currency)} очікує підтвердження`, 'payment');
+      });
+    }
+
+    closeModal();
+    PAY_MODAL_STATE = null;
+    toast('Дякуємо! Оплату передано на підтвердження адміністратору 🎉', 'success');
+    renderPageContent(STATE.currentPage);
+  } catch(e){
+    toast(e.message || 'Не вдалося надіслати оплату, спробуйте ще раз', 'error');
+    if(btn){ btn.disabled = false; btn.textContent = '✅ Я оплатив(ла), повідомити адміністратора'; }
+  }
 }
 
 /* ============================================================
@@ -1615,10 +1842,6 @@ function renderParentHome(c){
   const u = STATE.currentUser;
   const children = getChildrenOf(u.id);
   c.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h2 style="font-size:20px;font-weight:700;">Мої діти</h2>
-      <button class="btn btn-primary" onclick="showAddChildModal()">+ Додати дитину</button>
-    </div>
     <div class="grid grid-2">
       ${children.map(ch=>{
         const lessons = studentLessons(ch.id).filter(l=>l.status==='planned');
@@ -1628,7 +1851,7 @@ function renderParentHome(c){
         <div class="card card-hover">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
             <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
-            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.subjects||''} клас</span></div>
+            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade} клас</span></div>
           </div>
           <div class="grid grid-2" style="margin-bottom:14px;">
             <div class="badge">📅 ${lessons.length} уроків</div>
@@ -1637,56 +1860,9 @@ function renderParentHome(c){
           ${next ? `<p class="muted" style="margin-bottom:10px;">Наступний урок: <b>${esc(next.subject)}</b>, ${fmtDate(next.date)} о ${next.time}</p>` : ''}
           <button class="btn btn-outline btn-block btn-sm" onclick="openChildDetail('${ch.id}')">Детальніше →</button>
         </div>`;
-      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано. Натисніть "+ Додати дитину"</p></div>`}
+      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`}
     </div>
   `;
-}
-
-async function showAddChildModal(){
-  openModal(`
-    <div class="modal-box">
-      <div class="modal-head"><h3>👶 Додати дитину</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body">
-        <div style="background:var(--primary-light);border-radius:12px;padding:14px;margin-bottom:18px;font-size:13px;color:var(--primary);">
-          💡 Після додавання дитина зможе входити на платформу зі своїм email та паролем
-        </div>
-        <div class="field"><label>Ім'я дитини *</label><input id="childName" placeholder="Наприклад: Марія"></div>
-        <div class="field"><label>Клас</label><input id="childGrade" placeholder="Наприклад: 5"></div>
-        <div class="field"><label>Email дитини *</label><input id="childEmail" type="email" placeholder="child@gmail.com"></div>
-        <div class="field"><label>Пароль для входу *</label><input id="childPassword" type="password" placeholder="Мінімум 6 символів"></div>
-        <button class="btn btn-primary btn-block" id="addChildBtn">➕ Додати дитину</button>
-      </div>
-    </div>
-  `);
-  $('#addChildBtn').onclick = submitAddChild;
-}
-
-async function submitAddChild(){
-  const name = document.getElementById('childName').value.trim();
-  const grade = document.getElementById('childGrade').value.trim();
-  const email = document.getElementById('childEmail').value.trim();
-  const password = document.getElementById('childPassword').value;
-
-  if(!name || !email || !password){ showToast('Заповніть всі обов\'язкові поля','error'); return; }
-  if(password.length < 6){ showToast('Пароль мінімум 6 символів','error'); return; }
-
-  try {
-    let child;
-    if(API_MODE){
-      const resp = await apiFetch('/users/add-child', { method:'POST', body:{ name, grade, email, password } });
-      child = resp.child;
-      child.parentId = STATE.currentUser.id;
-      DB.users.push(child);
-    } else {
-      child = { id: uid(), name, email, role:'student', subjects: grade, parentId: STATE.currentUser.id, emailVerified: true };
-      DB.users.push(child);
-    }
-    closeModal();
-    toast('Дитину додано! ✅','success');
-    renderApp();
-  } catch(e){
-    toast(e.message || 'Помилка','error');
-  }
 }
 
 function openChildDetail(childId){
@@ -2294,7 +2470,11 @@ function openChatModal(otherId, opts={}){
       </div>
       <div class="modal-body" id="chatThread" style="max-height:420px;overflow-y:auto;">${renderThread()}</div>
       ${opts.paymentConfirm ? `
-      <div class="modal-foot" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div class="modal-foot" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span class="muted">Сума: <b>${opts.paymentConfirm.currency && opts.paymentConfirm.currency!=='UAH' ? fmtCurrency(opts.paymentConfirm.amount, opts.paymentConfirm.currency) : fmtMoney(opts.paymentConfirm.amount)}</b></span>
+          ${opts.paymentConfirm.receiptUrl ? `<a href="${esc(opts.paymentConfirm.receiptUrl)}" target="_blank" rel="noopener">📎 Переглянути квитанцію</a>` : '<span class="muted">Квитанція не прикріплена</span>'}
+        </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-sm btn-accent" id="confirmPayBtn">✅ Підтвердити оплату</button>
           <button class="btn btn-sm btn-danger" id="rejectPayBtn">❌ Відхилити</button>
@@ -2323,19 +2503,35 @@ function openChatModal(otherId, opts={}){
   $('#chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#chatSendBtn').click(); });
 
   if(opts.paymentConfirm){
-    $('#confirmPayBtn').onclick = ()=>{
-      opts.paymentConfirm.status = 'confirmed';
-      sendMessage(me.id, otherId, `✅ Вашу оплату "${opts.paymentConfirm.desc}" на суму ${fmtMoney(opts.paymentConfirm.amount)} підтверджено.`);
-      toast('Оплату підтверджено', 'success');
-      closeModal();
-      renderPageContent(STATE.currentPage);
+    const p = opts.paymentConfirm;
+    const amountStr = p.currency && p.currency!=='UAH' ? fmtCurrency(p.amount, p.currency) : fmtMoney(p.amount);
+    $('#confirmPayBtn').onclick = async ()=>{
+      const btn = $('#confirmPayBtn'); btn.disabled = true;
+      try {
+        await DataLayer.reviewPayment(p.id, 'confirmed');
+        sendMessage(me.id, otherId, `✅ Вашу оплату "${p.desc}" на суму ${amountStr} підтверджено.`);
+        toast('Оплату підтверджено', 'success');
+        closeModal();
+        renderPageContent(STATE.currentPage);
+      } catch(e) {
+        toast(e.message || 'Не вдалося підтвердити оплату', 'error');
+        btn.disabled = false;
+      }
     };
-    $('#rejectPayBtn').onclick = ()=>{
-      opts.paymentConfirm.status = 'rejected';
-      sendMessage(me.id, otherId, `⚠️ Виникло питання щодо оплати "${opts.paymentConfirm.desc}" на суму ${fmtMoney(opts.paymentConfirm.amount)}. Будь ласка, зв'яжіться з нами.`);
-      toast('Позначено як проблемну оплату', 'info');
-      closeModal();
-      renderPageContent(STATE.currentPage);
+    $('#rejectPayBtn').onclick = async ()=>{
+      const reason = prompt('Коротка причина відхилення (буде показана учню, необов\'язково):', '') || '';
+      const btn = $('#rejectPayBtn'); btn.disabled = true;
+      try {
+        await DataLayer.reviewPayment(p.id, 'rejected', reason);
+        const contact = DB.paymentInfo.telegramContact || '';
+        sendMessage(me.id, otherId, `⚠️ Оплату "${p.desc}" на суму ${amountStr} не підтверджено.${reason ? ' Причина: '+reason+'.' : ''} Зв'яжіться з нами: Telegram ${contact}`);
+        toast('Позначено як непідтверджену оплату', 'info');
+        closeModal();
+        renderPageContent(STATE.currentPage);
+      } catch(e) {
+        toast(e.message || 'Не вдалося відхилити оплату', 'error');
+        btn.disabled = false;
+      }
     };
   }
 }
@@ -2550,193 +2746,6 @@ function renderAdminStudentProfileContent(){
   };
   const chatInput = $('#adminStudentChatInput');
   if(chatInput) chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') $('#adminStudentChatSend').click(); });
-}
-
-/* ---- Адмін: батьки та діти ---- */
-function renderAdminParents(c){
-  const parents = DB.users.filter(u=>u.role==='parent');
-  c.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="color:var(--text-light);font-size:14px;">Всього батьків: <b>${parents.length}</b></div>
-      <button class="btn btn-accent btn-sm" onclick="openAdminAddParentModal()">➕ Додати батьків</button>
-    </div>
-    ${parents.length === 0 ? `
-      <div class="empty-state"><div class="ei">👨‍👩‍👧</div><p>Батьків ще немає</p></div>
-    ` : parents.map(p => {
-      const children = DB.users.filter(u => u.parentId === p.id || u.parent_id === p.id);
-      return `
-      <div class="card" style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0;">${avatarLetter(p.name)}</div>
-            <div>
-              <div style="font-weight:700;font-size:16px;">${esc(p.name)}</div>
-              <div style="color:var(--text-light);font-size:13px;">📧 ${esc(p.email)}</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm btn-outline" onclick="openEditUserModal('${p.id}')">✏️ Редагувати</button>
-            <button class="btn btn-sm btn-outline" onclick="openChatModal('${p.id}')">💬</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteParent('${p.id}')">🗑️</button>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:12px;">
-          <div style="font-size:13px;color:var(--text-light);margin-bottom:10px;">👶 Діти (${children.length}):</div>
-          ${children.length === 0 ? `<div style="color:var(--text-light);font-size:13px;">Дітей не додано</div>` :
-            `<div style="display:flex;flex-wrap:wrap;gap:10px;">
-              ${children.map(ch => {
-                const lessons = DB.lessons.filter(l=>l.studentId===ch.id);
-                const hw = DB.homework.filter(h=>h.studentId===ch.id);
-                const donehw = hw.filter(h=>h.done);
-                return `
-                <div class="card" style="flex:1;min-width:200px;box-shadow:none;border:1px solid var(--border);cursor:pointer;transition:box-shadow 0.2s;" onclick="openAdminChildProfile('${ch.id}')" onmouseover="this.style.boxShadow='0 4px 12px rgba(91,79,217,0.15)'" onmouseout="this.style.boxShadow='none'">
-                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(ch.name)}</div>
-                    <div>
-                      <div style="font-weight:600;">${esc(ch.name)}</div>
-                      <div style="font-size:12px;color:var(--text-light);">${ch.subjects||'—'} клас</div>
-                    </div>
-                  </div>
-                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <span class="badge">📅 ${lessons.length} уроків</span>
-                    <span class="badge badge-accent">✅ ${donehw.length}/${hw.length} ДЗ</span>
-                  </div>
-                  <div style="margin-top:10px;display:flex;gap:6px;">
-                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();openEditUserModal('${ch.id}')">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteStudent('${ch.id}')">🗑️</button>
-                  </div>
-                </div>`;
-              }).join('')}
-            </div>`
-          }
-        </div>
-      </div>`;
-    }).join('')}
-  `;
-}
-
-function openAdminChildProfile(childId){
-  const ch = getUserById(childId);
-  if(!ch) return;
-  const lessons = DB.lessons.filter(l=>l.studentId===childId);
-  const hw = DB.homework.filter(h=>h.studentId===childId);
-  const donehw = hw.filter(h=>h.done);
-  const grades = hw.filter(h=>h.grade!=null).map(h=>h.grade);
-  const avg = grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(1) : '—';
-  openModal(`
-    <div class="modal-box" style="max-width:520px;">
-      <div class="modal-head"><h3>👶 ${esc(ch.name)}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-          <div style="width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;">${avatarLetter(ch.name)}</div>
-          <div>
-            <div style="font-size:18px;font-weight:700;">${esc(ch.name)}</div>
-            <div style="color:var(--text-light);">${ch.subjects||'—'} клас · 📧 ${esc(ch.email||'—')}</div>
-          </div>
-        </div>
-        <div class="grid grid-3" style="margin-bottom:20px;">
-          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:var(--primary);">${lessons.length}</div>
-            <div style="font-size:12px;color:var(--text-light);">Уроків</div>
-          </div>
-          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:var(--accent-dark);">${donehw.length}/${hw.length}</div>
-            <div style="font-size:12px;color:var(--text-light);">ДЗ виконано</div>
-          </div>
-          <div class="card" style="box-shadow:none;border:1px solid var(--border);text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:var(--primary);">${avg}</div>
-            <div style="font-size:12px;color:var(--text-light);">Середній бал</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-primary" style="flex:1" onclick="closeModal();openEditUserModal('${childId}')">✏️ Редагувати профіль</button>
-          <button class="btn btn-outline" onclick="closeModal()">Закрити</button>
-        </div>
-      </div>
-    </div>
-  `);
-}
-
-async function deleteParent(parentId){
-  const p = getUserById(parentId);
-  if(!p) return;
-  if(!confirm('Видалити батьків «'+p.name+'» та всіх їх дітей?')) return;
-  try {
-    await DataLayer.deleteUser(parentId);
-    DB.users = DB.users.filter(u=>u.id!==parentId && u.parentId!==parentId);
-    toast('Видалено','success');
-    renderPageContent(STATE.currentPage);
-  } catch(e){ toast(e.message||'Помилка','error'); }
-}
-
-function openAdminAddParentModal(){
-  openModal(`
-    <div class="modal-box">
-      <div class="modal-head"><h3>➕ Додати батьків</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body">
-        <div class="field"><label>Ім'я батьків *</label><input id="newPName" placeholder="Ім'я Прізвище"></div>
-        <div class="field"><label>Email *</label><input id="newPEmail" type="email" placeholder="parent@email.com"></div>
-        <div class="field"><label>Тимчасовий пароль</label><input id="newPPass" value="123456" placeholder="Мінімум 6 символів"></div>
-        <div class="field"><label>Телефон</label><input id="newPPhone" placeholder="+380..."></div>
-        <button class="btn btn-primary btn-block" id="createParentBtn">Додати батьків</button>
-      </div>
-    </div>
-  `);
-  $('#createParentBtn').onclick = async ()=>{
-    const name = $('#newPName').value.trim();
-    const email = $('#newPEmail').value.trim().toLowerCase();
-    const pass = $('#newPPass').value || '123456';
-    const phone = $('#newPPhone').value.trim();
-    if(!name||!email){toast('Заповніть ім\'я та email','error');return;}
-    try {
-      const resp = await DataLayer.adminCreateUser({role:'parent',name,email,password:pass,phone});
-      toast('Батьків додано. Пароль: '+(resp.tempPassword||pass),'success');
-      closeModal();
-      renderPageContent(STATE.currentPage);
-    } catch(e){toast(e.message||'Помилка','error');}
-  };
-}
-
-/* ---- Редагування профілю будь-якого користувача ---- */
-function openEditUserModal(userId){
-  const u = getUserById(userId);
-  if(!u) return;
-  openModal(`
-    <div class="modal-box">
-      <div class="modal-head"><h3>✏️ Редагувати профіль</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body">
-        <div class="field"><label>Ім'я *</label><input id="editName" value="${esc(u.name||'')}"></div>
-        <div class="field"><label>Email</label><input id="editEmail" value="${esc(u.email||'')}" type="email"></div>
-        <div class="field"><label>Телефон</label><input id="editPhone" value="${esc(u.phone||'')}"></div>
-        ${u.role==='student'||u.role==='parent'&&false?`<div class="field"><label>Клас</label><input id="editGrade" value="${esc(u.subjects||u.grade||'')}"></div>`:''}
-        ${u.role==='teacher'?`<div class="field"><label>Спеціалізація</label><input id="editSubjects" value="${esc(u.subjects||u.subject||'Математика')}"></div>`:''}
-        <div class="field"><label>Новий пароль (залиште порожнім якщо не змінюєте)</label><input id="editPass" type="password" placeholder="Мінімум 6 символів"></div>
-        <button class="btn btn-primary btn-block" id="saveEditBtn">💾 Зберегти</button>
-      </div>
-    </div>
-  `);
-  $('#saveEditBtn').onclick = async ()=>{
-    const name = $('#editName').value.trim();
-    const phone = $('#editPhone').value.trim();
-    const pass = $('#editPass') ? $('#editPass').value : '';
-    const subjects = $('#editSubjects') ? $('#editSubjects').value.trim() : (u.subjects||u.subject||'');
-    const grade = $('#editGrade') ? $('#editGrade').value.trim() : (u.subjects||'');
-    if(!name){toast('Введіть ім\'я','error');return;}
-    try {
-      const updates = {name, phone, subjects: subjects||grade||u.subjects};
-      if(API_MODE){
-        await apiFetch('/users/'+userId, {method:'PATCH', body:updates});
-        if(pass && pass.length>=6){
-          await apiFetch('/users/admin-reset-password', {method:'POST', body:{userId, newPassword:pass}});
-        }
-      }
-      const user = DB.users.find(u=>u.id===userId);
-      if(user){ Object.assign(user, updates); }
-      toast('Профіль оновлено ✅','success');
-      closeModal();
-      renderPageContent(STATE.currentPage);
-    } catch(e){toast(e.message||'Помилка','error');}
-  };
 }
 
 function renderAdminStudents(c){
@@ -3016,23 +3025,26 @@ function renderAdminPayments(c){
       <div><div class="stat-val">${fmtMoney(totalRevenue)}</div><div class="stat-lbl">Загальний дохід платформи</div></div>
     </div>
     <div class="card">
-      <div class="section-title">💳 Усі платежі — натисніть на ім'я, щоб написати клієнту</div>
+      <div class="section-title">💳 Усі платежі — натисніть на ім'я, щоб підтвердити чи відхилити</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Дата</th><th>Платник</th><th>Учень</th><th>Опис</th><th>Сума</th><th>Статус</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Платник</th><th>Учень</th><th>Опис</th><th>Сума</th><th>Квитанція</th><th>Статус</th></tr></thead>
         <tbody>
           ${DB.payments.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(p=>{
             const st = getUserById(p.studentId);
             const payer = p.parentId ? getUserById(p.parentId) : st;
             const statusBadge = p.status==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
-              : p.status==='rejected' ? '<span class="badge badge-danger">Проблема</span>'
+              : p.status==='rejected' ? '<span class="badge badge-danger">Не підтверджено</span>'
               : '<span class="badge badge-warn">Очікує підтвердження</span>';
+            const amountStr = p.currency && p.currency!=='UAH' ? fmtCurrency(p.amount, p.currency) : fmtMoney(p.amount);
+            const receiptCell = p.receiptUrl ? `<a href="${esc(p.receiptUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📎</a>` : '—';
             return `<tr>
               <td>${fmtDate(p.date)}</td>
               <td style="cursor:pointer;color:var(--primary);font-weight:700;" onclick="openPaymentChat('${p.id}')">${payer?esc(payer.name):'—'}</td>
-              <td>${st?esc(st.name):'—'}</td><td>${esc(p.desc)}</td><td>${fmtMoney(p.amount)}</td>
+              <td>${st?esc(st.name):'—'}</td><td>${esc(p.desc)}</td><td>${amountStr}</td>
+              <td>${receiptCell}</td>
               <td>${statusBadge}</td>
             </tr>`;
-          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
+          }).join('') || `<tr><td colspan="7" class="muted" style="text-align:center;">Платежів ще не було</td></tr>`}
         </tbody>
       </table></div>
     </div>
@@ -4050,28 +4062,15 @@ async function syncUserDataFromBackend(user) {
       DB.users = usersResp.users || [];
       // Додаємо поточного юзера якщо нема
       if (!DB.users.find(u => u.id === user.id)) DB.users.push(user);
-      // Завантажуємо дітей для кожного батька
-      const parents = DB.users.filter(u=>u.role==='parent');
-      for(const p of parents){
-        try {
-          const cr = await apiFetch('/users/my-children').catch(()=>({children:[]}));
-        } catch(e){}
-      }
-      // Помічаємо parentId для дітей
-      DB.users.forEach(u=>{ if(u.parent_id) u.parentId = u.parent_id; });
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];
-    } else if (user.role === 'parent') {
-      DB.users = [user];
-      // Завантажуємо дітей з бекенду
-      const childrenResp = await apiFetch('/users/my-children').catch(() => ({ children: [] }));
-      const children = (childrenResp.children || []).map(ch => ({ ...ch, parentId: user.id }));
-      DB.users.push(...children);
     } else {
       DB.users = [user];
       // Додаємо вчителя
       if (user.teacher) DB.users.push(user.teacher);
+      // Додаємо дітей (для батьків)
+      if (user.children) DB.users.push(...user.children);
     }
 
     // Прогрес ігор
@@ -4174,6 +4173,25 @@ const DataLayer = {
     if (API_MODE) await API.updatePayment(id, 'confirmed').catch(() => {});
     const p = DB.payments.find(x => x.id === id);
     if (p) p.status = 'confirmed';
+  },
+  // Адмін підтверджує ('confirmed') або відхиляє ('rejected') оплату, з коментарем
+  async reviewPayment(id, status, comment) {
+    if (API_MODE) {
+      const updated = await API.updatePayment(id, status, comment);
+      const idx = DB.payments.findIndex(x => x.id === id);
+      if (idx !== -1) DB.payments[idx] = updated;
+      return updated;
+    }
+    const p = DB.payments.find(x => x.id === id);
+    if (p) {
+      p.status = status;
+      p.adminComment = comment || null;
+      if (status === 'confirmed') {
+        const s = getUserById(p.studentId);
+        if (s) s.balance = (s.balance || 0) + (p.currency === 'UAH' || !p.currency ? p.amount : 0);
+      }
+    }
+    return p;
   },
   async sendMsg(fromId, toId, text) {
     if (API_MODE) {

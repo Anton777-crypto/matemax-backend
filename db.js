@@ -88,13 +88,19 @@ function initDB() {
 
     -- ── Платежі ──────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS payments (
-      id          TEXT PRIMARY KEY,
-      student_id  TEXT NOT NULL,
-      teacher_id  TEXT NOT NULL,
-      amount      REAL NOT NULL,
-      lessons     INTEGER DEFAULT 1,
-      status      TEXT DEFAULT 'pending',
-      created_at  TEXT DEFAULT (datetime('now')),
+      id                TEXT PRIMARY KEY,
+      student_id        TEXT NOT NULL,
+      teacher_id        TEXT NOT NULL,
+      amount            REAL NOT NULL,
+      currency          TEXT DEFAULT 'UAH',
+      lessons           INTEGER DEFAULT 1,
+      desc              TEXT,
+      status            TEXT DEFAULT 'pending',
+      receipt_url       TEXT,
+      receipt_filename  TEXT,
+      admin_comment     TEXT,
+      reviewed_at       TEXT,
+      created_at        TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -146,6 +152,21 @@ function initDB() {
     );
   `);
 
+  // ── Міграція: додаємо нові колонки payments, якщо їх ще немає ──
+  // (для баз, створених до появи валюти/квитанцій/коментарів адміна)
+  const paymentCols = db.prepare('PRAGMA table_info(payments)').all().map(c => c.name);
+  const ensurePaymentColumn = (name, definition) => {
+    if (!paymentCols.includes(name)) {
+      db.exec(`ALTER TABLE payments ADD COLUMN ${name} ${definition}`);
+    }
+  };
+  ensurePaymentColumn('currency', "TEXT DEFAULT 'UAH'");
+  ensurePaymentColumn('desc', 'TEXT');
+  ensurePaymentColumn('receipt_url', 'TEXT');
+  ensurePaymentColumn('receipt_filename', 'TEXT');
+  ensurePaymentColumn('admin_comment', 'TEXT');
+  ensurePaymentColumn('reviewed_at', 'TEXT');
+
   // Перевіряємо чи є адмін — якщо ні, створюємо дефолтного
   const adminExists = db.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get();
   if (!adminExists) {
@@ -160,14 +181,7 @@ function initDB() {
     console.log(`👑 Адмін створений: ${adminEmail} / ${process.env.ADMIN_PASSWORD || 'admin123'}`);
   }
 
-  // Міграція: додаємо parent_id якщо не існує
-  try {
-    db.exec('ALTER TABLE users ADD COLUMN parent_id TEXT');
-    console.log('✅ Міграція: додано parent_id');
-  } catch(e) { /* вже існує */ }
-
   console.log('✅ База даних готова:', DB_PATH);
 }
 
 module.exports = { getDB, initDB };
-// This line intentionally left blank
