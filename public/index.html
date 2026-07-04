@@ -571,6 +571,10 @@ const API = {
     const d = await apiFetch('/users/' + id);
     return d.user;
   },
+  async getAdminContacts() {
+    const d = await apiFetch('/users/contacts/admins');
+    return d.users;
+  },
   async adminCreate(payload) {
     return apiFetch('/users/admin-create', { method: 'POST', body: payload });
   },
@@ -2341,7 +2345,15 @@ function renderTeacherHomework(c){
 
         <div class="field">
           <label>Файл для учня (необов'язково)</label>
-          <div class="field-row">
+          <div class="auth-tabs" style="margin-bottom:14px;">
+            <div class="auth-tab active" id="hwTabUpload">📎 Завантажити файл</div>
+            <div class="auth-tab" id="hwTabLink">🔗 Посилання</div>
+          </div>
+          <div id="hwUploadBlock">
+            <input type="file" id="hwFileInput" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.ppt,.pptx">
+            <p class="hint" id="hwFileStatus">До 5 МБ — буде доступно учню для завантаження</p>
+          </div>
+          <div id="hwLinkBlock" class="hidden field-row">
             <input id="hwFileName" placeholder="Назва файлу (напр. dz.pdf)">
             <input id="hwFileUrl" placeholder="URL файлу">
           </div>
@@ -2387,21 +2399,55 @@ function renderTeacherHomework(c){
   recordedAudioBase64 = null; recognizedTranscript='';
   setupRecorder();
 
+  let hwUploadMode = 'file';
+  let hwFileData = null, hwUploadedFileName = null;
+  $('#hwTabUpload').onclick = ()=>{
+    hwUploadMode='file';
+    $('#hwTabUpload').classList.add('active'); $('#hwTabLink').classList.remove('active');
+    $('#hwUploadBlock').classList.remove('hidden'); $('#hwLinkBlock').classList.add('hidden');
+  };
+  $('#hwTabLink').onclick = ()=>{
+    hwUploadMode='link';
+    $('#hwTabLink').classList.add('active'); $('#hwTabUpload').classList.remove('active');
+    $('#hwLinkBlock').classList.remove('hidden'); $('#hwUploadBlock').classList.add('hidden');
+  };
+  $('#hwFileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 5*1024*1024){ toast('Файл завеликий (макс. 5 МБ)', 'error'); e.target.value=''; return; }
+    const reader = new FileReader();
+    reader.onloadend = ()=>{
+      hwFileData = reader.result;
+      hwUploadedFileName = file.name;
+      $('#hwFileStatus').textContent = `✅ Готово до завантаження: ${file.name} (${Math.round(file.size/1024)} КБ)`;
+      $('#hwFileStatus').style.color = 'var(--accent-dark)';
+    };
+    reader.readAsDataURL(file);
+  });
+
   $('#hwSubmit').onclick = async ()=>{
     const studentId = $('#hwStudent').value;
     const title = $('#hwTitle').value.trim();
     const desc = $('#hwDesc').value.trim();
     const due = $('#hwDue').value;
-    const fileName = $('#hwFileName').value.trim();
-    const fileUrl = $('#hwFileUrl').value.trim();
     if(!title || !desc || !due){ toast('Заповніть назву, опис та термін', 'error'); return; }
+
+    const payload = {
+      studentId, teacherId:u.id, title, desc, due,
+      audioBase64: recordedAudioBase64, audioTranscript: recognizedTranscript||null,
+    };
+    if(hwUploadMode==='file' && hwFileData){
+      payload.fileData = hwFileData;
+      payload.fileName = hwUploadedFileName;
+    } else if(hwUploadMode==='link'){
+      const fileName = $('#hwFileName').value.trim();
+      const fileUrl = $('#hwFileUrl').value.trim();
+      if(fileName && fileUrl){ payload.fileName = fileName; payload.fileUrl = fileUrl; }
+    }
+
     const btn = $('#hwSubmit'); btn.disabled = true;
     try {
-      await DataLayer.addHomework({
-        studentId, teacherId:u.id, title, desc, due,
-        fileUrl: fileUrl||null, fileName: fileName||null,
-        audioBase64: recordedAudioBase64, audioTranscript: recognizedTranscript||null,
-      });
+      await DataLayer.addHomework(payload);
       toast('Домашнє завдання створено!', 'success');
       renderPageContent('homework_teacher');
     } catch(e){
@@ -2956,7 +3002,10 @@ function renderAdminStudentProfileContent(){
   const payments = DB.payments.filter(p=>p.studentId===s.id);
   const used = planUsedLessons(s), total = planTotalLessons(s), remaining = planRemainingLessons(s);
   const teacherMsgs = teacher ? getConversation(s.id, teacher.id) : [];
-  const adminMsgs = getConversation(STATE.currentUser.id, s.id);
+  // Керована дитина не має логіна — переписка з нею йде через акаунт батьків
+  const chatTargetId = s.managedByParent && s.parentId ? s.parentId : s.id;
+  const chatTargetLabel = s.managedByParent && s.parentId ? `батьками (${getUserById(s.parentId)?.name || ''})` : s.name;
+  const adminMsgs = getConversation(STATE.currentUser.id, chatTargetId);
 
   const box = $('#studentProfileModal');
   box.innerHTML = `
@@ -3008,12 +3057,12 @@ function renderAdminStudentProfileContent(){
         ${teacherMsgs.map(m=>`<div style="margin-bottom:8px;font-size:13px;"><b>${m.fromId===teacher.id?esc(teacher.name):esc(s.name)}:</b> ${esc(m.text)}</div>`).join('') || `<p class="muted">Листування ще немає</p>`}
       </div>` : ''}
 
-      <div class="section-title" style="font-size:15px;">💬 Ваше листування з учнем</div>
+      <div class="section-title" style="font-size:15px;">💬 Ваше листування з ${esc(chatTargetLabel)}</div>
       <div style="background:var(--bg);border-radius:12px;padding:12px;max-height:160px;overflow-y:auto;margin-bottom:14px;" id="adminStudentChatThread">
-        ${adminMsgs.map(m=>`<div style="margin-bottom:8px;font-size:13px;"><b>${m.fromId===STATE.currentUser.id?'Ви':esc(s.name)}:</b> ${esc(m.text)}</div>`).join('') || `<p class="muted">Напишіть учню повідомлення нижче</p>`}
+        ${adminMsgs.map(m=>`<div style="margin-bottom:8px;font-size:13px;"><b>${m.fromId===STATE.currentUser.id?'Ви':esc(chatTargetLabel)}:</b> ${esc(m.text)}</div>`).join('') || `<p class="muted">Напишіть повідомлення нижче</p>`}
       </div>
       <div style="display:flex;gap:8px;margin-bottom:18px;">
-        <input type="text" id="adminStudentChatInput" placeholder="Написати учню..." style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;">
+        <input type="text" id="adminStudentChatInput" placeholder="Написати..." style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;">
         <button class="btn btn-primary btn-sm" id="adminStudentChatSend">Надіслати</button>
       </div>
 
@@ -3024,7 +3073,7 @@ function renderAdminStudentProfileContent(){
     const inp = $('#adminStudentChatInput');
     const text = inp.value.trim();
     if(!text) return;
-    sendMessage(STATE.currentUser.id, s.id, text);
+    sendMessage(STATE.currentUser.id, chatTargetId, text);
     inp.value = '';
     renderAdminStudentProfileContent();
   };
@@ -4395,6 +4444,9 @@ async function syncUserDataFromBackend(user) {
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];
+      // Адмін потрібен у списку контактів для повідомлень
+      const admins = await API.getAdminContacts().catch(() => []);
+      admins.forEach(a => { if (!DB.users.find(u => u.id === a.id)) DB.users.push(a); });
     } else if (user.role === 'parent') {
       const childrenResp = await API.getChildren().catch(() => []);
       DB.users = [user, ...(childrenResp || [])];
@@ -4406,6 +4458,9 @@ async function syncUserDataFromBackend(user) {
           if (t) DB.users.push(t);
         }
       }
+      // Адмін потрібен у списку контактів для повідомлень
+      const admins = await API.getAdminContacts().catch(() => []);
+      admins.forEach(a => { if (!DB.users.find(u => u.id === a.id)) DB.users.push(a); });
     } else {
       DB.users = [user];
       // Додаємо вчителя (для учня зі старих окремих акаунтів)
@@ -4413,6 +4468,9 @@ async function syncUserDataFromBackend(user) {
         const t = await API.getUser(user.teacherId).catch(() => null);
         if (t) DB.users.push(t);
       }
+      // Адмін потрібен у списку контактів для повідомлень
+      const admins = await API.getAdminContacts().catch(() => []);
+      admins.forEach(a => { if (!DB.users.find(u => u.id === a.id)) DB.users.push(a); });
     }
 
     // Прогрес ігор

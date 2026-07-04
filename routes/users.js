@@ -32,6 +32,19 @@ router.get('/', auth, (req, res) => {
   }
 });
 
+// ── GET /api/users/contacts/admins ────────────────────────────
+// Мінімальні дані адміністраторів — потрібно будь-якій ролі, щоб мати змогу
+// написати адміністрації (без доступу до повного профілю).
+router.get('/contacts/admins', auth, (req, res) => {
+  try {
+    const db = getDB();
+    const admins = db.prepare("SELECT id, name, role FROM users WHERE role = 'admin'").all();
+    res.json({ users: admins });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── GET /api/users/:id ────────────────────────────────────────
 router.get('/:id', auth, (req, res) => {
   try {

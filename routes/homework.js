@@ -1,9 +1,37 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
 const { addNotification, getChildIds } = require('../utils');
+
+const HOMEWORK_DIR = path.join(__dirname, '..', 'uploads', 'homework');
+if (!fs.existsSync(HOMEWORK_DIR)) fs.mkdirSync(HOMEWORK_DIR, { recursive: true });
+
+function saveHomeworkFile(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const match = /^data:([\w.+-]+\/[\w.+-]+);base64,([a-zA-Z0-9+/=]+)$/.exec(dataUrl.trim());
+  if (!match) return null;
+
+  const mime = match[1];
+  const base64 = match[2];
+  if (base64.length > 8 * 1024 * 1024) return null;
+
+  const extFromMime = {
+    'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  };
+  const ext = extFromMime[mime] || 'bin';
+  const filename = `${uuidv4()}.${ext}`;
+
+  fs.writeFileSync(path.join(HOMEWORK_DIR, filename), Buffer.from(base64, 'base64'));
+  return `/uploads/homework/${filename}`;
+}
 
 // Дитина під керуванням батька не має логіна — сповіщення йдуть батькові
 function notifyStudentOrParent(db, studentId, text, type) {
@@ -62,17 +90,23 @@ router.get('/', auth, (req, res) => {
 router.post('/', auth, teacherOrAdmin, (req, res) => {
   try {
     const db = getDB();
-    const { studentId, teacherId, title, desc, due, fileUrl, fileName, audioBase64 } = req.body;
+    const { studentId, teacherId, title, desc, due, fileUrl, fileName, fileData, audioBase64 } = req.body;
     if (!studentId || !title) return res.status(400).json({ error: 'Студент та назва обов\'язкові' });
 
     const effectiveTeacherId = teacherId || req.user.id;
     const id = uuidv4();
 
+    let finalFileUrl = fileUrl || null;
+    if (fileData) {
+      const saved = saveHomeworkFile(fileData);
+      if (saved) finalFileUrl = saved;
+    }
+
     db.prepare(`
       INSERT INTO homework (id, student_id, teacher_id, title, desc, due, file_url, file_name, audio_base64)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, studentId, effectiveTeacherId, title, desc || null, due || null,
-           fileUrl || null, fileName || null, audioBase64 || null);
+           finalFileUrl, fileName || null, audioBase64 || null);
 
     const hw = db.prepare('SELECT * FROM homework WHERE id = ?').get(id);
     notifyStudentOrParent(db, studentId, `Нове домашнє завдання: "${title}" 📚`, 'homework');
@@ -121,7 +155,10 @@ router.patch('/:id', auth, (req, res) => {
     if (req.body.audioBase64 !== undefined) {
       updates.push('audio_base64 = ?'); vals.push(req.body.audioBase64);
     }
-    if (req.body.fileUrl !== undefined) {
+    if (req.body.fileData) {
+      const saved = saveHomeworkFile(req.body.fileData);
+      if (saved) { updates.push('file_url = ?'); vals.push(saved); }
+    } else if (req.body.fileUrl !== undefined) {
       updates.push('file_url = ?'); vals.push(req.body.fileUrl);
     }
     if (req.body.fileName !== undefined) {
