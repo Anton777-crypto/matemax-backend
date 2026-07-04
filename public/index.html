@@ -1142,6 +1142,7 @@ const NAV_CONFIG = {
     {id:'materials', icon:'📚', label:'Матеріали'},
     {id:'games', icon:'🎮', label:'Ігри'},
     {id:'progress', icon:'📈', label:'Прогрес'},
+    {id:'messages', icon:'💬', label:'Повідомлення'},
     {id:'payment', icon:'💳', label:'Оплата'},
   ],
   admin: [
@@ -1261,7 +1262,8 @@ function renderPageContent(page){
     },
     parent: {
       home: renderParentHome, children: renderParentChildren, schedule: renderParentSchedule, homework: renderParentHomework,
-      materials: renderParentMaterials, games: renderParentGames, progress: renderParentProgress, payment: renderParentPayment,
+      materials: renderParentMaterials, games: renderParentGames, progress: renderParentProgress,
+      messages: renderParentMessages, payment: renderParentPayment,
     },
     admin: {
       home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
@@ -1486,27 +1488,26 @@ function openStudentConversation(otherId){
 /* ----- Повідомлення (вчитель) ----- */
 function renderTeacherMessages(c){
   const u = STATE.currentUser;
-  const students = getStudentsOf(u.id);
   const admin = DB.users.find(x=>x.role==='admin');
-  const contacts = [admin, ...students].filter(Boolean);
 
-  if(!contacts.length){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
+  if(!admin){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
 
-  c.innerHTML = `<div class="grid grid-3" id="msgContactsGridT"></div>`;
-  const grid = $('#msgContactsGridT');
-  grid.innerHTML = contacts.map(p=>{
-    const conv = getConversation(u.id, p.id);
-    const last = conv[conv.length-1];
-    const unread = unreadCountFor(u.id, p.id);
-    return `<div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openChatModal('${p.id}')">
-      ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:${p.role==='admin'?'var(--text)':'var(--accent)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(p.name)}</div>
-        <div><h4 style="font-size:14.5px;">${esc(p.name)}</h4><span class="muted">${p.role==='admin'?'Адміністрація':(p.grade+' клас')}</span></div>
+  const conv = getConversation(u.id, admin.id);
+  const last = conv[conv.length-1];
+  const unread = unreadCountFor(u.id, admin.id);
+  c.innerHTML = `
+    <p class="muted" style="margin-bottom:16px;">Питання щодо розкладу, учнів чи оплат — пишіть напряму адміністрації.</p>
+    <div class="grid grid-3">
+      <div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openChatModal('${admin.id}')">
+        ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(admin.name)}</div>
+          <div><h4 style="font-size:14.5px;">${esc(admin.name)}</h4><span class="muted">Адміністрація</span></div>
+        </div>
+        <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
       </div>
-      <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
-    </div>`;
-  }).join('');
+    </div>
+  `;
 }
 
 /* ----- Повідомлення (адмін) ----- */
@@ -1896,6 +1897,30 @@ function childStatusBadge(ch){
   return '<span class="badge badge-accent">Активний</span>';
 }
 
+function renderParentMessages(c){
+  const u = STATE.currentUser;
+  const admin = DB.users.find(x=>x.role==='admin');
+
+  if(!admin){ c.innerHTML = `<div class="empty-state"><div class="ei">💬</div><p>Немає доступних співрозмовників</p></div>`; return; }
+
+  const conv = getConversation(u.id, admin.id);
+  const last = conv[conv.length-1];
+  const unread = unreadCountFor(u.id, admin.id);
+  c.innerHTML = `
+    <p class="muted" style="margin-bottom:16px;">Питання щодо навчання, оплати чи розкладу дитини — пишіть напряму адміністрації школи.</p>
+    <div class="grid grid-3">
+      <div class="card card-hover" style="cursor:pointer;position:relative;" onclick="openChatModal('${admin.id}')">
+        ${unread>0?`<span style="position:absolute;top:14px;right:14px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;">${unread}</span>`:''}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div class="avatar" style="width:42px;height:42px;border-radius:50%;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(admin.name)}</div>
+          <div><h4 style="font-size:14.5px;">${esc(admin.name)}</h4><span class="muted">Адміністрація</span></div>
+        </div>
+        <p class="muted" style="font-size:13px;">${last ? esc(last.text.slice(0,70)) + (last.text.length>70?'…':'') : 'Немає повідомлень. Натисніть, щоб написати'}</p>
+      </div>
+    </div>
+  `;
+}
+
 function renderParentChildren(c){
   const u = STATE.currentUser;
   const children = getChildrenOf(u.id);
@@ -2267,7 +2292,6 @@ function renderTeacherStudents(c){
           <div style="display:flex;gap:8px;">
             <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openAddLessonFor('${s.id}')">+ Урок</button>
             <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openAddHwFor('${s.id}')">+ ДЗ</button>
-            <button class="btn btn-outline btn-sm" onclick="openChatModal('${s.id}')">💬</button>
           </div>
         </div>`;
       }).join('') || `<div class="empty-state"><div class="ei">🎒</div><p>Учнів поки немає</p></div>`}
@@ -3410,7 +3434,7 @@ function renderAdminPayments(c){
         <tbody>
           ${DB.payments.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(p=>{
             const st = getUserById(p.studentId);
-            const payer = p.parentId ? getUserById(p.parentId) : st;
+            const payer = st?.parentId ? getUserById(st.parentId) : st;
             const statusBadge = p.status==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
               : p.status==='rejected' ? '<span class="badge badge-danger">Не підтверджено</span>'
               : '<span class="badge badge-warn">Очікує підтвердження</span>';
@@ -3433,7 +3457,8 @@ function renderAdminPayments(c){
 function openPaymentChat(paymentId){
   const p = DB.payments.find(x=>x.id===paymentId);
   if(!p) return;
-  const payerId = p.parentId || p.studentId;
+  const st = getUserById(p.studentId);
+  const payerId = st?.parentId || p.studentId;
   openChatModal(payerId, {paymentConfirm:p});
 }
 
@@ -3569,6 +3594,7 @@ const TOPICS = {
   geometry:   {label:'Геометрія', icon:'🔺', desc:'Фігури, периметр, площа', color:'#22C98E'},
   numline:    {label:'Числова пряма', icon:'📏', desc:'Порівняння, порядок, координати', color:'#F5A623'},
   multtable:  {label:'Таблиця множення', icon:'✖️', desc:'Тренування таблиці множення', color:'#E84855'},
+  peterson:   {label:'Математика за Петерсоном', icon:'🧩', desc:'Закономірності, рівняння, логічні задачі (1-4 клас)', color:'#8B5CF6'},
 };
 
 const MECHANICS = ['quiz4','trueFalse','flashCard','fillBlank','speedQuiz','matchPairs','sortGroups','sequence','countEmoji','compare','numline','balloons'];
@@ -3802,7 +3828,69 @@ function topicQuestion(topic, grade){
   if(topic==='multtable') return genMultTable(grade);
   if(topic==='geometry') return genGeometryQuestion(grade);
   if(topic==='numline') return genCompareNumbers(grade); // used loosely; numline mechanic has its own gen
+  if(topic==='peterson') return genPetersonQuestion(grade);
   return genArithmeticProblem(grade);
+}
+
+/* ---- Математика за методикою Л.Г. Петерсон: закономірності, рівняння, логічні задачі ---- */
+function genPetersonQuestion(grade){
+  const type = pick(['missing','sequence','word']);
+
+  if(grade===1){
+    if(type==='missing'){
+      const a = rnd(1,8), sum = rnd(a+1,10);
+      return {text:`${a} + ? = ${sum}`, answer: sum-a};
+    }
+    if(type==='sequence'){
+      const start = rnd(1,5), step = rnd(1,3);
+      const seq = [start, start+step, start+step*2];
+      return {text:`Продовж закономірність: ${seq.join(', ')}, ?`, answer: start+step*3};
+    }
+    const a = rnd(1,5), b = rnd(1,4);
+    return {text:`У кошику ${a} яблука, поклали ще ${b}. Скільки яблук стало?`, answer: a+b};
+  }
+
+  if(grade===2){
+    if(type==='missing'){
+      const b = rnd(2,9), sum = rnd(b+3,20);
+      return {text:`? + ${b} = ${sum}`, answer: sum-b};
+    }
+    if(type==='sequence'){
+      const start = rnd(2,10), step = rnd(2,5);
+      const seq = [start, start+step, start+step*2];
+      return {text:`Яке наступне число: ${seq.join(', ')}, ?`, answer: start+step*3};
+    }
+    const a = rnd(10,20), b = rnd(2,9);
+    return {text:`У класі ${a} учнів, ${b} пішли на змагання. Скільки залишилось?`, answer: a-b};
+  }
+
+  if(grade===3){
+    if(type==='missing'){
+      const x = rnd(5,30), b = rnd(2,20);
+      return {text:`x + ${b} = ${x+b}. Чому дорівнює x?`, answer: x};
+    }
+    if(type==='sequence'){
+      const start = rnd(3,15), step = rnd(3,8);
+      const seq = [start, start+step, start+step*2];
+      return {text:`Продовж послідовність: ${seq.join(', ')}, ?`, answer: start+step*3};
+    }
+    const a = rnd(20,60), b = rnd(2,9);
+    return {text:`Скільки буде ${a} − ${b} × 2?`, answer: a-b*2};
+  }
+
+  // grade 4
+  if(type==='missing'){
+    const x = rnd(10,50), b = rnd(5,30);
+    return {text:`x − ${b} = ${x}. Чому дорівнює x?`, answer: x+b};
+  }
+  if(type==='sequence'){
+    const start = rnd(5,20), step = rnd(4,10);
+    const seq = [start, start+step, start+step*2, start+step*3];
+    return {text:`Яке наступне число: ${seq.join(', ')}, ?`, answer: start+step*4};
+  }
+  const packs = rnd(3,9), perPack = rnd(4,12);
+  const extra = rnd(2,10);
+  return {text:`У ${packs} упаковках по ${perPack} зошитів, і ще ${extra} окремо. Скільки всього зошитів?`, answer: packs*perPack+extra};
 }
 
 /* ---- MECHANIC 1: quiz4 (4 варіанти) ---- */

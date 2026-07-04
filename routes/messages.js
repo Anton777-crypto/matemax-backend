@@ -81,15 +81,25 @@ router.get('/:otherId', auth, (req, res) => {
 });
 
 // ── POST /api/messages ────────────────────────────────────────
+// Модель спілкування: тільки через адміністратора.
+// Вчитель ↔ Адмін, Батьки ↔ Адмін. Прямого зв'язку вчитель-батьки чи будь-хто-дитина немає.
 router.post('/', auth, (req, res) => {
   try {
     const db = getDB();
     const { toId, text } = req.body;
     if (!toId || !text?.trim()) return res.status(400).json({ error: 'Вкажіть отримувача і текст' });
 
-    // Перевіряємо чи існує отримувач
-    const recipient = db.prepare('SELECT id FROM users WHERE id = ?').get(toId);
+    const recipient = db.prepare('SELECT id, role FROM users WHERE id = ?').get(toId);
     if (!recipient) return res.status(404).json({ error: 'Отримувача не знайдено' });
+
+    const me = req.user;
+    const isAdminInvolved = me.role === 'admin' || recipient.role === 'admin';
+    if (!isAdminInvolved) {
+      return res.status(403).json({ error: 'Спілкування можливе лише через адміністрацію школи' });
+    }
+    if (me.role === 'admin' && !['teacher', 'parent'].includes(recipient.role) && recipient.id !== me.id) {
+      return res.status(403).json({ error: 'Адміністрація може писати лише вчителям і батькам' });
+    }
 
     const id = uuidv4();
     db.prepare('INSERT INTO messages (id, from_id, to_id, text) VALUES (?, ?, ?, ?)')

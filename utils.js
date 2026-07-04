@@ -122,4 +122,11 @@ function getChildIds(db, parentId) {
   return db.prepare("SELECT id FROM users WHERE parent_id = ? AND role = 'student'").all(parentId).map(r => r.id);
 }
 
-module.exports = { sendEmail, addNotification, formatUser, getChildIds, isEmailConfigured };
+// Дитина під керуванням батька не має логіна — сповіщення для неї йдуть батькові
+function notifyStudentOrParent(db, studentId, text, type) {
+  const row = db.prepare('SELECT parent_id, managed_by_parent FROM users WHERE id = ?').get(studentId);
+  const target = (row && row.managed_by_parent && row.parent_id) ? row.parent_id : studentId;
+  addNotification(target, text, type);
+}
+
+module.exports = { sendEmail, addNotification, formatUser, getChildIds, isEmailConfigured, notifyStudentOrParent };
