@@ -167,4 +167,40 @@ router.delete('/:id', auth, (req, res) => {
   }
 });
 
+// ── POST /api/children/:id/trial ──────────────────────────────────
+// Батько активує безкоштовний пробний урок дитини — без оплати, миттєво.
+// Адміністратор отримує сповіщення і сам плане дату/час уроку.
+router.post('/:id/trial', auth, (req, res) => {
+  try {
+    const db = getDB();
+    const child = db.prepare("SELECT * FROM users WHERE id = ? AND role = 'student'").get(req.params.id);
+    if (!child) return res.status(404).json({ error: 'Учня не знайдено' });
+
+    const isOwnerParent = req.user.role === 'parent' && child.parent_id === req.user.id;
+    const isSelf = req.user.role === 'student' && req.user.id === child.id;
+    if (!isOwnerParent && !isSelf) {
+      return res.status(403).json({ error: 'Доступ заборонено' });
+    }
+    if (child.trial_used) return res.status(400).json({ error: 'Пробний урок вже використано' });
+
+    db.prepare("UPDATE users SET activation_status = 'active', trial_used = 1 WHERE id = ?").run(child.id);
+
+    const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+    const notifierName = isOwnerParent
+      ? (db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id)?.name || 'Батьки')
+      : child.name;
+    admins.forEach(a => addNotification(
+      a.id,
+      `${notifierName}: дитині «${child.name}» потрібно запланувати БЕЗКОШТОВНИЙ пробний урок 🎁`,
+      'info'
+    ));
+
+    const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(child.id);
+    res.json({ child: formatChild(updated) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

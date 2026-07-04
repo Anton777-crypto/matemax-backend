@@ -664,6 +664,10 @@ const API = {
   async deleteChild(id) {
     return apiFetch('/children/' + id, { method: 'DELETE' });
   },
+  async claimChildTrial(id) {
+    const d = await apiFetch('/children/' + id + '/trial', { method: 'POST' });
+    return d.child;
+  },
 
   // Payouts
   async getPayouts() {
@@ -702,8 +706,8 @@ const API = {
   async getGameProgress(studentId) {
     return apiFetch('/games/progress' + (studentId ? '?studentId=' + studentId : ''));
   },
-  async saveGameProgress(gameId, score) {
-    return apiFetch('/games/progress', { method: 'POST', body: { gameId, score } });
+  async saveGameProgress(gameId, score, studentId) {
+    return apiFetch('/games/progress', { method: 'POST', body: { gameId, score, studentId } });
   },
 };
 
@@ -755,21 +759,30 @@ const DB = {
   // ====================================================================
   // РЕКВІЗИТИ ШКОЛИ ДЛЯ ОПЛАТИ
   // Курси нижче — орієнтовні, онови вручну за потреби (щоб показувати суму
-  // у гривнях поряд з EUR/USD). Самі перекази йдуть в EUR або USD на IBAN нижче.
+  // у гривнях поряд з EUR/USD).
   // ====================================================================
   paymentInfo: {
-    recipient: 'ЗВЄРЄВА АНАСТАСІЯ ГЕННАДІЇВНА',
-    bankName: 'Banca Transilvania (BT)',
-    swift: 'BTRLRO22',
     telegramContact: '@AnastasiiaZver',
     telegramPhone: '+380 66 190 65 79',
-    // Рахунки за валютами — учень обирає, в якій валюті йому зручніше платити
     accounts: {
-      EUR: { iban: 'RO29BTRLEURCRT0684738501' },
-      USD: { iban: 'RO33BTRLUSDCRT0684738501' },
+      UAH: {
+        iban: 'UA473052990262006400934097869',
+        recipient: 'ЗВЄРЄВА АНАСТАСІЯ ГЕННАДІЇВНА',
+        purpose: 'Поповнення рахунку, ЗВЄРЄВА АНАСТАСІЯ ГЕННАДІЇВНА',
+      },
+      EUR: {
+        iban: 'RO29BTRLEURCRT0684738501',
+        recipient: 'Zvierieva Anastasiia',
+        bankName: 'Banca Transilvania (BT)',
+        swift: 'BTRLRO22',
+      },
+      USD: {
+        iban: 'RO33BTRLUSDCRT0684738501',
+        recipient: 'Zvierieva Anastasiia',
+        bankName: 'Banca Transilvania (BT)',
+        swift: 'BTRLRO22',
+      },
     },
-    // Для гривні окремого рахунку немає — реквізити картки видаються за запитом у Telegram
-    uahNote: 'Для оплати карткою в гривнях напишіть у Telegram — надішлемо номер картки.',
     // Орієнтовні курси для показу суми в EUR/USD поряд з грн (онови вручну за потреби)
     uahToEurRate: 45.0,  // 1 EUR ≈ 45 грн
     uahToUsdRate: 41.5,  // 1 USD ≈ 41.5 грн
@@ -1122,6 +1135,7 @@ const NAV_CONFIG = {
     {id:'children', icon:'👶', label:'Мої діти'},
     {id:'schedule', icon:'📅', label:'Розклад'},
     {id:'homework', icon:'📝', label:'ДЗ'},
+    {id:'games', icon:'🎮', label:'Ігри'},
     {id:'progress', icon:'📈', label:'Прогрес'},
     {id:'payment', icon:'💳', label:'Оплата'},
   ],
@@ -1241,7 +1255,7 @@ function renderPageContent(page){
     },
     parent: {
       home: renderParentHome, children: renderParentChildren, schedule: renderParentSchedule, homework: renderParentHomework,
-      progress: renderParentProgress, payment: renderParentPayment,
+      games: renderParentGames, progress: renderParentProgress, payment: renderParentPayment,
     },
     admin: {
       home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
@@ -1540,34 +1554,49 @@ function copyToClipboard(text, label){
 function renderPaymentInfoCard(){
   const pi = DB.paymentInfo;
   const acc = pi.accounts || {};
+  const card = (cur, flag)=>{
+    const a = acc[cur];
+    if(!a) return '';
+    return `
+    <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+      <div class="muted" style="margin-bottom:6px;">${flag} Переказ в ${cur}</div>
+      <b style="font-size:13px;word-break:break-all;">${esc(a.iban)}</b>
+      <p class="muted" style="margin-top:6px;">${esc(a.recipient)}${a.bankName?`<br>${esc(a.bankName)}`:''}${a.swift?`<br>SWIFT/BIC: <b>${esc(a.swift)}</b>`:''}</p>
+      ${a.purpose?`<p class="muted" style="margin-top:4px;font-size:12px;">Призначення: ${esc(a.purpose)}</p>`:''}
+      <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(a.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
+    </div>`;
+  };
   return `
     <div class="card" style="margin-bottom:18px;">
       <div class="section-title">🏦 Реквізити для оплати</div>
       <p class="muted" style="margin-bottom:14px;">Оберіть зручну валюту нижче та скопіюйте реквізити. Заплатити можна через застосунок свого банку. Після оплати прикріпіть квитанцію — адміністратор підтвердить надходження.</p>
       <div class="grid grid-3">
-        ${acc.EUR ? `
-        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">🇪🇺 Переказ в EUR</div>
-          <b style="font-size:13px;word-break:break-all;">${esc(acc.EUR.iban)}</b>
-          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
-          <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.EUR.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
-        </div>` : ''}
-        ${acc.USD ? `
-        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">🇺🇸 Переказ в USD</div>
-          <b style="font-size:13px;word-break:break-all;">${esc(acc.USD.iban)}</b>
-          <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
-          <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.USD.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
-        </div>` : ''}
-        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-          <div class="muted" style="margin-bottom:6px;">💳 Оплата в гривні</div>
-          <p class="muted" style="margin-top:6px;">${esc(pi.uahNote||'')}</p>
-          <a class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" href="https://t.me/${esc((pi.telegramContact||'').replace('@',''))}" target="_blank" rel="noopener">💬 Написати в Telegram</a>
-        </div>
+        ${card('UAH','🇺🇦')}
+        ${card('EUR','🇪🇺')}
+        ${card('USD','🇺🇸')}
       </div>
-      <p class="hint" style="margin-top:12px;color:var(--warning);">⚠️ Для переказу з-за кордону (напр. з України) обов'язково вкажіть SWIFT/BIC код банку. Питання щодо оплати — Telegram ${esc(pi.telegramContact||'')}.</p>
+      <p class="hint" style="margin-top:12px;color:var(--warning);">⚠️ Для переказу з-за кордону (напр. з України у EUR/USD) обов'язково вкажіть SWIFT/BIC код банку.</p>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="openContactAdminModal()">☎️ Зв'язатися з адміністратором</button>
     </div>
   `;
+}
+
+function openContactAdminModal(){
+  const pi = DB.paymentInfo;
+  openModal(`
+    <div class="modal-box" style="max-width:380px;">
+      <div class="modal-head"><h3>☎️ Зв'язок з адміністратором</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body" style="text-align:center;">
+        <p class="muted" style="margin-bottom:16px;">Питання щодо оплати чи навчання — пишіть або телефонуйте:</p>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:16px;margin-bottom:12px;">
+          <div class="muted" style="margin-bottom:6px;">📞 Телефон</div>
+          <b style="font-size:16px;">${esc(pi.telegramPhone)}</b>
+        </div>
+        <a class="btn btn-accent btn-block" href="https://t.me/${esc((pi.telegramContact||'').replace('@',''))}" target="_blank" rel="noopener">💬 Написати в Telegram (${esc(pi.telegramContact)})</a>
+        <a class="btn btn-outline btn-block" style="margin-top:8px;" href="tel:${esc((pi.telegramPhone||'').replace(/\s+/g,''))}">📞 Зателефонувати</a>
+      </div>
+    </div>
+  `);
 }
 
 function renderPaymentView(c, student){
@@ -1657,13 +1686,16 @@ function renderPaymentView(c, student){
   `;
 }
 
-function claimTrial(studentId){
+async function claimTrial(studentId){
   const s = getUserById(studentId);
   if(!s) return;
-  s.trialUsed = true;
-  DB.payments.push({id:uid(), studentId:s.id, parentId:s.parentId, date:new Date().toISOString().slice(0,10), amount:0, desc:'Пробний урок (безкоштовно)', status:'confirmed'});
-  toast('Пробний урок активовано! Очікуйте на дзвінок вчителя 🎉', 'success');
-  renderPageContent(STATE.currentPage);
+  try {
+    await DataLayer.claimChildTrial(studentId);
+    toast('Пробний урок активовано! Адміністратор скоро зв\'яжеться щодо дати 🎉', 'success');
+    renderPageContent(STATE.currentPage);
+  } catch(e){
+    toast(e.message || 'Помилка активації пробного уроку', 'error');
+  }
 }
 
 let PAY_MODAL_STATE = null; // {studentId, amountUah, desc, lessonsCount, currency, receiptBase64, receiptFilename}
@@ -1694,6 +1726,7 @@ function payNow(studentId, amount, desc, lessonsCount){
         </div>
 
         <button class="btn btn-accent btn-block" id="payConfirmBtn">✅ Я оплатив(ла), повідомити адміністратора</button>
+        <button class="btn btn-ghost btn-block btn-sm" style="margin-top:8px;" onclick="openContactAdminModal()">☎️ Зв'язатися з адміністратором</button>
       </div>
     </div>
   `, {persistent:true});
@@ -1702,21 +1735,15 @@ function payNow(studentId, amount, desc, lessonsCount){
     const box = $('#payRequisitesBox');
     const pi = DB.paymentInfo;
     const cur = PAY_MODAL_STATE.currency;
-    if(cur==='UAH'){
-      box.innerHTML = `<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-        <p class="muted">${esc(pi.uahNote||'')}</p>
-        <a class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" href="https://t.me/${esc((pi.telegramContact||'').replace('@',''))}" target="_blank" rel="noopener">💬 Написати в Telegram</a>
-      </div>`;
-    } else {
-      const acc = (pi.accounts||{})[cur];
-      if(!acc){ box.innerHTML = `<p class="muted">Реквізити тимчасово недоступні, напишіть в Telegram ${esc(pi.telegramContact||'')}</p>`; return; }
-      box.innerHTML = `<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-        <div class="muted" style="margin-bottom:6px;">IBAN (${cur})</div>
-        <b style="font-size:13px;word-break:break-all;">${esc(acc.iban)}</b>
-        <p class="muted" style="margin-top:6px;">${esc(pi.recipient)}<br>${esc(pi.bankName)}<br>SWIFT/BIC: <b>${esc(pi.swift)}</b></p>
-        <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(acc.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
-      </div>`;
-    }
+    const a = (pi.accounts||{})[cur];
+    if(!a){ box.innerHTML = `<p class="muted">Реквізити тимчасово недоступні, напишіть в Telegram ${esc(pi.telegramContact||'')}</p>`; return; }
+    box.innerHTML = `<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+      <div class="muted" style="margin-bottom:6px;">IBAN (${cur})</div>
+      <b style="font-size:13px;word-break:break-all;">${esc(a.iban)}</b>
+      <p class="muted" style="margin-top:6px;">${esc(a.recipient)}${a.bankName?`<br>${esc(a.bankName)}`:''}${a.swift?`<br>SWIFT/BIC: <b>${esc(a.swift)}</b>`:''}</p>
+      ${a.purpose?`<p class="muted" style="margin-top:4px;font-size:12px;">Призначення: ${esc(a.purpose)}</p>`:''}
+      <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px;" onclick="copyToClipboard('${esc(a.iban)}','IBAN скопійовано')">📋 Копіювати IBAN</button>
+    </div>`;
   };
   renderRequisites();
 
@@ -1823,7 +1850,7 @@ function bindChildPicker(container, onPick){
   });
 }
 
-const CHILD_SUBJECT_OPTIONS = ['Елементарна математика', 'Базова математика', 'Геометрія', 'Логіка'];
+const CHILD_SUBJECT_OPTIONS = ['Елементарна математика', 'Арифметика', 'Геометрія', 'Числова пряма', 'Таблиця множення', 'Логіка'];
 
 function childStatusBadge(ch){
   if(ch.activationStatus==='pending_payment') return '<span class="badge badge-warn">Очікує оплати</span>';
@@ -1855,6 +1882,7 @@ function renderParentChildren(c){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
             ${ch.activationStatus==='pending_payment' ? `
               <button class="btn btn-accent btn-sm" onclick="goPayForChild('${ch.id}')">💳 Оплатити навчання</button>
+              ${!ch.trialUsed ? `<button class="btn btn-outline btn-sm" onclick="claimChildTrialUI('${ch.id}')">🎁 Пробний урок безкоштовно</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="openEditChildModal('${ch.id}')">✏️ Редагувати</button>
               <button class="btn btn-danger btn-sm" onclick="removeChild('${ch.id}')">🗑️</button>
             ` : `
@@ -1931,6 +1959,19 @@ async function removeChild(childId){
   } catch(e){ toast(e.message || 'Помилка видалення', 'error'); }
 }
 
+async function claimChildTrialUI(childId){
+  const ch = getUserById(childId);
+  if(!ch) return;
+  if(!confirm(`Активувати безкоштовний пробний урок для «${ch.name}»? Адміністратор зв'яжеться, щоб узгодити дату й час.`)) return;
+  try {
+    await DataLayer.claimChildTrial(childId);
+    toast('Пробний урок активовано! Адміністратор скоро зв\'яжеться щодо дати 🎉', 'success');
+    renderPageContent(STATE.currentPage);
+  } catch(e){
+    toast(e.message || 'Помилка активації', 'error');
+  }
+}
+
 function goPayForChild(childId){
   STATE._selectedChild = childId;
   STATE.currentPage = 'payment';
@@ -1957,7 +1998,10 @@ function renderParentHome(c){
           </div>
           ${ch.activationStatus==='pending_payment' ? `
             <p class="muted" style="margin-bottom:12px;">Навчання ще не оплачено — після оплати адміністратор призначить вчителя.</p>
-            <button class="btn btn-accent btn-block btn-sm" onclick="goPayForChild('${ch.id}')">💳 Оплатити навчання</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-accent btn-sm" onclick="goPayForChild('${ch.id}')">💳 Оплатити навчання</button>
+              ${!ch.trialUsed ? `<button class="btn btn-outline btn-sm" onclick="claimChildTrialUI('${ch.id}')">🎁 Пробний урок</button>` : ''}
+            </div>
           ` : `
           <div class="grid grid-2" style="margin-bottom:14px;">
             <div class="badge">📅 ${lessons.length} уроків</div>
@@ -2047,6 +2091,17 @@ function renderParentProgress(c){
       </div>
     `;
   }).join('');
+}
+
+function renderParentGames(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
+  const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
+  STATE.activeGamePlayerId = selected;
+  c.innerHTML = parentChildPicker(children, selected) + `<div id="parentSubContent"></div>`;
+  bindChildPicker(c, (cid)=>{ STATE.activeGamePlayerId = cid; renderGamesHub($('#parentSubContent')); });
+  renderGamesHub($('#parentSubContent'));
 }
 
 function renderParentPayment(c){
@@ -3505,7 +3560,7 @@ function finishGame(){
   sess.finished = true;
   // save progress
   const u = STATE.currentUser;
-  const studentId = u.role==='student' ? u.id : null;
+  const studentId = u.role==='student' ? u.id : (u.role==='parent' ? STATE.activeGamePlayerId : null);
   if(studentId){
     if(!DB.gameProgress[studentId]) DB.gameProgress[studentId] = {};
     const prev = DB.gameProgress[studentId][sess.game.id];
@@ -3514,8 +3569,8 @@ function finishGame(){
       plays: (prev?prev.plays:0) + 1,
       lastPlayed: new Date().toISOString().slice(0,10),
     };
-    // Зберігаємо в бекенд
-    DataLayer.saveGameScore(sess.game.id, sess.score).catch(()=>{});
+    // Зберігаємо в бекенд (якщо грає батько — прогрес пишеться на дитину)
+    DataLayer.saveGameScore(sess.game.id, sess.score, u.role==='parent' ? studentId : undefined).catch(()=>{});
   }
   renderGamePlayer();
 }
@@ -4237,6 +4292,12 @@ async function syncUserDataFromBackend(user) {
     if (user.role === 'student') {
       const gpResp = await API.getGameProgress().catch(() => ({ progress: {} }));
       DB.gameProgress[user.id] = gpResp.progress || {};
+    } else if (user.role === 'parent') {
+      const childrenList = DB.users.filter(u => u.role === 'student' && u.parentId === user.id);
+      for (const ch of childrenList) {
+        const gpResp = await API.getGameProgress(ch.id).catch(() => ({ progress: {} }));
+        DB.gameProgress[ch.id] = gpResp.progress || {};
+      }
     }
 
   } catch (e) {
@@ -4361,8 +4422,8 @@ const DataLayer = {
     DB.messages.push(m);
     return m;
   },
-  async saveGameScore(gameId, score) {
-    if (API_MODE) await API.saveGameProgress(gameId, score).catch(() => {});
+  async saveGameScore(gameId, score, studentId) {
+    if (API_MODE) await API.saveGameProgress(gameId, score, studentId).catch(() => {});
   },
   async adminCreateUser(payload) {
     if (API_MODE) {
@@ -4413,6 +4474,17 @@ const DataLayer = {
   async deleteChild(id) {
     if (API_MODE) await API.deleteChild(id);
     DB.users = DB.users.filter(u => u.id !== id);
+  },
+  async claimChildTrial(id) {
+    if (API_MODE) {
+      const updated = await API.claimChildTrial(id);
+      const idx = DB.users.findIndex(u => u.id === id);
+      if (idx !== -1) DB.users[idx] = updated;
+      return updated;
+    }
+    const child = DB.users.find(u => u.id === id);
+    if (child) { child.activationStatus = 'active'; child.trialUsed = true; }
+    return child;
   },
 };
 

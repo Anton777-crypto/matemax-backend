@@ -108,6 +108,7 @@ function formatUser(u) {
     teacherId: u.teacher_id || null,
     bio: u.bio || null,
     subjects: u.subjects || null,
+    grade: u.grade || null,
     parentId: u.parent_id || null,
     managedByParent: !!u.managed_by_parent,
     activationStatus: u.activation_status || 'active',
