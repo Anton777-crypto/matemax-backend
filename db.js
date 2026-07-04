@@ -177,6 +177,7 @@ function initDB() {
   ensureUserColumn('parent_id', 'TEXT');
   ensureUserColumn('managed_by_parent', 'INTEGER DEFAULT 0');
   ensureUserColumn('activation_status', "TEXT DEFAULT 'active'");
+  ensureUserColumn('grade', 'TEXT');
 
   // Перевіряємо чи є адмін — якщо ні, створюємо дефолтного
   const adminExists = db.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get();
