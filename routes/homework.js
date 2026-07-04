@@ -3,7 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
-const { addNotification } = require('../utils');
+const { addNotification, getChildIds } = require('../utils');
 
 function formatHW(h) {
   return {
@@ -36,6 +36,11 @@ router.get('/', auth, (req, res) => {
       hw = db.prepare('SELECT * FROM homework WHERE teacher_id = ? ORDER BY created_at DESC').all(me.id);
     } else if (me.role === 'student') {
       hw = db.prepare('SELECT * FROM homework WHERE student_id = ? ORDER BY created_at DESC').all(me.id);
+    } else if (me.role === 'parent') {
+      const childIds = getChildIds(db, me.id);
+      hw = childIds.length
+        ? db.prepare(`SELECT * FROM homework WHERE student_id IN (${childIds.map(() => '?').join(',')}) ORDER BY created_at DESC`).all(...childIds)
+        : [];
     } else {
       hw = [];
     }

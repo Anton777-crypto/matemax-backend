@@ -648,6 +648,23 @@ const API = {
     return d.payment;
   },
 
+  // Children (діти, керовані батьками)
+  async getChildren() {
+    const d = await apiFetch('/children');
+    return d.children;
+  },
+  async createChild(payload) {
+    const d = await apiFetch('/children', { method: 'POST', body: payload });
+    return d.child;
+  },
+  async updateChild(id, payload) {
+    const d = await apiFetch('/children/' + id, { method: 'PATCH', body: payload });
+    return d.child;
+  },
+  async deleteChild(id) {
+    return apiFetch('/children/' + id, { method: 'DELETE' });
+  },
+
   // Payouts
   async getPayouts() {
     const d = await apiFetch('/payouts');
@@ -819,9 +836,7 @@ function getStudentsOf(teacherId){
 }
 function getUserById(id){ return DB.users.find(u=>u.id===id); }
 function getChildrenOf(parentId){
-  const p = getUserById(parentId);
-  if(!p) return [];
-  return (p.children||[]).map(getUserById).filter(Boolean);
+  return DB.users.filter(u=>u.role==='student' && u.parentId===parentId);
 }
 
 /* ---------------------------- AUTH ---------------------------- */
@@ -920,7 +935,7 @@ function renderRegisterForm(){
     <div class="field">
       <label>Я реєструюсь як:</label>
       <div class="role-pick">
-        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin').map(([k,m])=>`
+        ${Object.entries(ROLE_META).filter(([k])=>k!=='admin' && k!=='student').map(([k,m])=>`
           <div class="role-pick-item ${role===k?'active':''}" data-role="${k}">
             <span class="ric">${m.icon}</span>${m.label}
           </div>`).join('')}
@@ -930,30 +945,7 @@ function renderRegisterForm(){
       <label>Повне ім'я${role==='parent'?' (батьків/опікуна)':''}</label>
       <input type="text" id="regName" placeholder="Ім'я Прізвище">
     </div>
-    ${role==='student' ? `
-    <div class="field">
-      <label>Клас дитини</label>
-      <select id="regGrade">
-        <option value="1">1 клас</option>
-        <option value="2">2 клас</option>
-        <option value="3">3 клас</option>
-        <option value="4">4 клас</option>
-      </select>
-    </div>` : ''}
-    ${role==='parent' ? `
-    <div class="field">
-      <label>Ім'я дитини</label>
-      <input type="text" id="regChildName" placeholder="Ім'я та прізвище дитини">
-    </div>
-    <div class="field">
-      <label>Клас дитини</label>
-      <select id="regGrade">
-        <option value="1">1 клас</option>
-        <option value="2">2 клас</option>
-        <option value="3">3 клас</option>
-        <option value="4">4 клас</option>
-      </select>
-    </div>` : ''}
+    ${role==='parent' ? `<p class="muted" style="margin:-6px 0 4px;">Дітей ви зможете додати одразу після реєстрації — скільки завгодно, без окремих логінів для них.</p>` : ''}
     <div class="field">
       <label>Email</label>
       <input type="email" id="regEmail" placeholder="your@email.com">
@@ -984,9 +976,7 @@ async function startRegistration(){
     const btn = $('#registerBtn');
     if(btn){ btn.disabled = true; btn.textContent = 'Реєстрація...'; }
     try {
-      const grade = $('#regGrade') ? parseInt($('#regGrade').value) : null;
-      const childName = $('#regChildName') ? $('#regChildName').value.trim() : null;
-      const result = await API.register({ role, name, email, password: pass, grade, childName });
+      const result = await API.register({ role, name, email, password: pass });
       // В dev-режимі бекенд повертає devToken
       if(result.devToken){
         showEmailSentModal(result.devToken, email, result.verifyUrl);
@@ -1001,10 +991,8 @@ async function startRegistration(){
   }
 
   // Demo mode (in-memory)
-  if(DB.users.some(u=>u.email.toLowerCase()===email)){ toast('Цей email вже зареєстровано', 'error'); return; }
+  if(DB.users.some(u=>u.email.toLowerCase()===email)){ toast('Цей email вже зареєстрований', 'error'); return; }
   const reg = { role, name, email, password:pass };
-  if(role==='student'){ reg.grade = parseInt($('#regGrade').value); }
-  if(role==='parent'){ reg.childName = $('#regChildName').value.trim(); reg.grade = parseInt($('#regGrade').value); }
   const token = 'vt_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   DB.pendingVerifications[token] = reg;
   showEmailSentModal(token, email);
@@ -1064,19 +1052,9 @@ function completeRegistrationFromToken(token){
 function completeRegistration(reg){
   const newId = uid();
   let newUser;
-  const anyTeacher = DB.users.find(u=>u.role==='teacher');
-  const defaultTeacherId = anyTeacher ? anyTeacher.id : null;
 
-  if(reg.role==='student'){
-    newUser = {id:newId, role:'student', name:reg.name, email:reg.email, password:reg.password,
-      grade:reg.grade, parentId:null, teacherId:defaultTeacherId, balance:0, trialUsed:false, plan:null, emailVerified:true};
-    DB.users.push(newUser);
-  } else if(reg.role==='parent'){
-    const childId = uid();
-    const child = {id:childId, role:'student', name:reg.childName||(reg.name+' (дитина)'), email:'',
-      password:'', grade:reg.grade, parentId:newId, teacherId:defaultTeacherId, balance:0, trialUsed:false, plan:null, emailVerified:true};
-    DB.users.push(child);
-    newUser = {id:newId, role:'parent', name:reg.name, email:reg.email, password:reg.password, children:[childId], emailVerified:true};
+  if(reg.role==='parent'){
+    newUser = {id:newId, role:'parent', name:reg.name, email:reg.email, password:reg.password, emailVerified:true};
     DB.users.push(newUser);
   } else if(reg.role==='teacher'){
     newUser = {id:newId, role:'teacher', name:reg.name, email:reg.email, password:reg.password, subject:'Математика', students:[], payouts:[], emailVerified:true};
@@ -1135,6 +1113,7 @@ const NAV_CONFIG = {
   ],
   parent: [
     {id:'home', icon:'🏠', label:'Головна'},
+    {id:'children', icon:'👶', label:'Мої діти'},
     {id:'schedule', icon:'📅', label:'Розклад'},
     {id:'homework', icon:'📝', label:'ДЗ'},
     {id:'progress', icon:'📈', label:'Прогрес'},
@@ -1154,7 +1133,7 @@ const PAGE_TITLES = {
   payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
   homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
   progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
-  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення',
+  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення', children:'Мої діти',
 };
 
 function avatarLetter(name){ return (name||'?').trim()[0].toUpperCase(); }
@@ -1255,7 +1234,7 @@ function renderPageContent(page){
       payouts: renderTeacherPayouts, messages_teacher: renderTeacherMessages,
     },
     parent: {
-      home: renderParentHome, schedule: renderParentSchedule, homework: renderParentHomework,
+      home: renderParentHome, children: renderParentChildren, schedule: renderParentSchedule, homework: renderParentHomework,
       progress: renderParentProgress, payment: renderParentPayment,
     },
     admin: {
@@ -1820,10 +1799,10 @@ async function submitPaymentProof(){
 /* ============================================================
    РОЛЬ: БАТЬКИ
    ============================================================ */
-function parentChildPicker(children, onPick){
+function parentChildPicker(children, selectedId){
   if(children.length<=1) return '';
   return `<div class="game-filterbar" id="childPicker">
-    ${children.map((ch,i)=>`<div class="chip ${i===0?'active':''}" data-cid="${ch.id}">${esc(ch.name)} (${ch.grade} кл.)</div>`).join('')}
+    ${children.map((ch)=>`<div class="chip ${ch.id===selectedId?'active':''}" data-cid="${ch.id}">${esc(ch.name)} (${ch.grade} кл.)</div>`).join('')}
   </div>`;
 }
 function bindChildPicker(container, onPick){
@@ -1838,6 +1817,119 @@ function bindChildPicker(container, onPick){
   });
 }
 
+const CHILD_SUBJECT_OPTIONS = ['Математика (базова програма)', 'Олімпіадна математика', 'Підготовка до ЗНО/НМТ', 'Логіка та розвиток мислення'];
+
+function childStatusBadge(ch){
+  if(ch.activationStatus==='pending_payment') return '<span class="badge badge-warn">Очікує оплати</span>';
+  return '<span class="badge badge-accent">Активний</span>';
+}
+
+function renderParentChildren(c){
+  const u = STATE.currentUser;
+  const children = getChildrenOf(u.id);
+  c.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+      <button class="btn btn-accent btn-sm" id="addChildBtn">➕ Додати дитину</button>
+    </div>
+    <div class="grid grid-2">
+      ${children.map(ch=>{
+        const teacher = getUserById(ch.teacherId);
+        const subjects = Array.isArray(ch.subjects) ? ch.subjects : (typeof ch.subjects==='string' ? (JSON.parse(ch.subjects||'[]')) : []);
+        return `
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="avatar" style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(ch.name)}</div>
+              <div><h3 style="font-size:15.5px;">${esc(ch.name)}</h3><span class="muted">${ch.grade||'—'} клас</span></div>
+            </div>
+            ${childStatusBadge(ch)}
+          </div>
+          <p class="muted" style="margin-bottom:6px;">Вчитель: <b>${teacher?esc(teacher.name):'ще не призначено'}</b></p>
+          ${subjects.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${subjects.map(s=>`<span class="badge">${esc(s)}</span>`).join('')}</div>` : ''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            ${ch.activationStatus==='pending_payment' ? `
+              <button class="btn btn-accent btn-sm" onclick="goPayForChild('${ch.id}')">💳 Оплатити навчання</button>
+              <button class="btn btn-outline btn-sm" onclick="openEditChildModal('${ch.id}')">✏️ Редагувати</button>
+              <button class="btn btn-danger btn-sm" onclick="removeChild('${ch.id}')">🗑️</button>
+            ` : `
+              <button class="btn btn-outline btn-sm" onclick="openChildDetail('${ch.id}')">Детальніше →</button>
+            `}
+          </div>
+        </div>`;
+      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей ще не додано</p></div>`}
+    </div>
+  `;
+  $('#addChildBtn').onclick = ()=>openEditChildModal(null);
+}
+
+function openEditChildModal(childId){
+  const child = childId ? getUserById(childId) : null;
+  const subjects = child ? (Array.isArray(child.subjects) ? child.subjects : JSON.parse(child.subjects||'[]')) : [];
+  openModal(`
+    <div class="modal-box" style="max-width:460px;">
+      <div class="modal-head"><h3>${child?'✏️ Редагувати дитину':'➕ Додати дитину'}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="field"><label>Ім'я дитини</label><input id="childNameInput" placeholder="Ім'я та прізвище" value="${child?esc(child.name):''}"></div>
+        <div class="field">
+          <label>Клас</label>
+          <select id="childGradeInput">
+            ${[1,2,3,4,5,6,7,8,9].map(g=>`<option value="${g}" ${child&&child.grade==g?'selected':''}>${g} клас</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Напрямок навчання</label>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${CHILD_SUBJECT_OPTIONS.map(s=>`
+              <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:14px;">
+                <input type="checkbox" class="childSubjectCb" value="${esc(s)}" ${subjects.includes(s)?'checked':''}> ${esc(s)}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" id="saveChildBtn">${child?'Зберегти':'Додати дитину'}</button>
+      </div>
+    </div>
+  `);
+  $('#saveChildBtn').onclick = async ()=>{
+    const name = $('#childNameInput').value.trim();
+    const grade = parseInt($('#childGradeInput').value);
+    const subjectsSel = $all('.childSubjectCb').filter(cb=>cb.checked).map(cb=>cb.value);
+    if(!name){ toast("Вкажіть ім'я дитини", 'error'); return; }
+    const btn = $('#saveChildBtn'); btn.disabled = true;
+    try {
+      if(child){
+        await DataLayer.updateChild(child.id, {name, grade, subjects:subjectsSel});
+        toast('Дані дитини оновлено', 'success');
+      } else {
+        await DataLayer.createChild({name, grade, subjects:subjectsSel});
+        toast('Дитину додано! Тепер оплатіть навчання.', 'success');
+      }
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){
+      toast(e.message || 'Помилка збереження', 'error');
+      btn.disabled = false;
+    }
+  };
+}
+
+async function removeChild(childId){
+  const ch = getUserById(childId);
+  if(!ch) return;
+  if(!confirm(`Видалити дитину «${ch.name}»?`)) return;
+  try {
+    await DataLayer.deleteChild(childId);
+    toast('Дитину видалено', 'success');
+    renderPageContent(STATE.currentPage);
+  } catch(e){ toast(e.message || 'Помилка видалення', 'error'); }
+}
+
+function goPayForChild(childId){
+  STATE._selectedChild = childId;
+  STATE.currentPage = 'payment';
+  renderApp();
+}
+
 function renderParentHome(c){
   const u = STATE.currentUser;
   const children = getChildrenOf(u.id);
@@ -1849,18 +1941,26 @@ function renderParentHome(c){
         const next = lessons[0];
         return `
         <div class="card card-hover">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-            <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
-            <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade} клас</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
+              <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade||'—'} клас</span></div>
+            </div>
+            ${childStatusBadge(ch)}
           </div>
+          ${ch.activationStatus==='pending_payment' ? `
+            <p class="muted" style="margin-bottom:12px;">Навчання ще не оплачено — після оплати адміністратор призначить вчителя.</p>
+            <button class="btn btn-accent btn-block btn-sm" onclick="goPayForChild('${ch.id}')">💳 Оплатити навчання</button>
+          ` : `
           <div class="grid grid-2" style="margin-bottom:14px;">
             <div class="badge">📅 ${lessons.length} уроків</div>
             <div class="badge badge-warn">📝 ${hw.length} ДЗ</div>
           </div>
           ${next ? `<p class="muted" style="margin-bottom:10px;">Наступний урок: <b>${esc(next.subject)}</b>, ${fmtDate(next.date)} о ${next.time}</p>` : ''}
           <button class="btn btn-outline btn-block btn-sm" onclick="openChildDetail('${ch.id}')">Детальніше →</button>
+          `}
         </div>`;
-      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`}
+      }).join('') || `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p><button class="btn btn-accent btn-sm" style="margin-top:12px;" onclick="STATE.currentPage='children';renderApp();">➕ Додати дитину</button></div>`}
     </div>
   `;
 }
@@ -1876,7 +1976,7 @@ function renderParentSchedule(c){
   const children = getChildrenOf(u.id);
   if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
   const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
-  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  c.innerHTML = parentChildPicker(children, selected) + `<div id="parentSubContent"></div>`;
   bindChildPicker(c, (cid)=>{ renderScheduleView($('#parentSubContent'), studentLessons(cid)); });
   renderScheduleView($('#parentSubContent'), studentLessons(selected));
 }
@@ -1886,7 +1986,7 @@ function renderParentHomework(c){
   const children = getChildrenOf(u.id);
   if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
   const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
-  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  c.innerHTML = parentChildPicker(children, selected) + `<div id="parentSubContent"></div>`;
   bindChildPicker(c, (cid)=>{ renderHwListParent($('#parentSubContent'), studentHomework(cid)); });
   renderHwListParent($('#parentSubContent'), studentHomework(selected));
 }
@@ -1947,7 +2047,7 @@ function renderParentPayment(c){
   const children = getChildrenOf(u.id);
   if(!children.length){ c.innerHTML = `<div class="empty-state"><div class="ei">👶</div><p>Дітей не додано</p></div>`; return; }
   const selected = STATE._selectedChild && children.find(ch=>ch.id===STATE._selectedChild) ? STATE._selectedChild : children[0].id;
-  c.innerHTML = parentChildPicker(children) + `<div id="parentSubContent"></div>`;
+  c.innerHTML = parentChildPicker(children, selected) + `<div id="parentSubContent"></div>`;
   bindChildPicker(c, (cid)=>{ renderPaymentView($('#parentSubContent'), getUserById(cid)); });
   renderPaymentView($('#parentSubContent'), getUserById(selected));
 }
@@ -2686,6 +2786,7 @@ function renderAdminStudentProfileContent(){
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
           <div class="muted" style="margin-bottom:4px;">Клас / Вчитель</div>
           <b>${s.grade} клас · ${teacher?esc(teacher.name):'не призначено'}</b>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="closeModal(); openAssignTeacherModal('${s.id}');">🍎 Змінити вчителя</button>
         </div>
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
           <div class="muted" style="margin-bottom:4px;">Тариф</div>
@@ -2757,30 +2858,70 @@ function renderAdminStudents(c){
     <div class="card">
       <div class="section-title">🎒 Усі учні (${students.length})</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Ім'я</th><th>Клас</th><th>Вчитель</th><th>Тариф</th><th>Пройдено/Залишилось</th><th>Дії</th></tr></thead>
+        <thead><tr><th>Ім'я</th><th>Клас</th><th>Батьки</th><th>Статус</th><th>Вчитель</th><th>Тариф</th><th>Дії</th></tr></thead>
         <tbody>
           ${students.map(s=>{
             const teacher = getUserById(s.teacherId);
-            const used = planUsedLessons(s), total = planTotalLessons(s), remaining = planRemainingLessons(s);
+            const parent = s.parentId ? getUserById(s.parentId) : null;
+            const statusBadge = s.activationStatus==='pending_payment'
+              ? '<span class="badge badge-warn">Очікує оплати</span>'
+              : '<span class="badge badge-accent">Активний</span>';
             return `<tr>
               <td style="cursor:pointer;" onclick="openAdminStudentProfile('${s.id}')"><b>${esc(s.name)}</b></td>
-              <td>${s.grade} клас</td><td>${teacher?esc(teacher.name):'—'}</td>
+              <td>${s.grade||'—'} клас</td>
+              <td>${parent?esc(parent.name):'—'}</td>
+              <td>${statusBadge}</td>
+              <td>${teacher?esc(teacher.name):'<span class="muted">не призначено</span>'}</td>
               <td>${s.plan ? esc(s.plan.label) : (s.trialUsed?'Разово':'Пробний доступний')}</td>
-              <td>${used} пройдено / ${remaining} залишилось</td>
               <td>
-                <div style="display:flex;gap:6px;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <button class="btn btn-sm btn-outline" onclick="openAdminStudentProfile('${s.id}')">👁️ Кабінет</button>
-                  <button class="btn btn-sm btn-outline" onclick="openChatModal('${s.id}')">💬</button>
+                  <button class="btn btn-sm btn-outline" onclick="openAssignTeacherModal('${s.id}')">🍎 Вчитель</button>
                   <button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.id}')">🗑️</button>
                 </div>
               </td>
             </tr>`;
-          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
+          }).join('') || `<tr><td colspan="7" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
         </tbody>
       </table></div>
     </div>
   `;
   $('#addStudentBtn2').onclick = openAdminAddStudentModal;
+}
+
+function openAssignTeacherModal(studentId){
+  const s = getUserById(studentId);
+  if(!s) return;
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  openModal(`
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-head"><h3>🍎 Призначити вчителя</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:12px;">Учень: <b>${esc(s.name)}</b></p>
+        <div class="field">
+          <label>Вчитель</label>
+          <select id="assignTeacherSelect">
+            <option value="">— не призначено —</option>
+            ${teachers.map(t=>`<option value="${t.id}" ${s.teacherId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-block" id="saveAssignTeacherBtn">Зберегти</button>
+      </div>
+    </div>
+  `);
+  $('#saveAssignTeacherBtn').onclick = async ()=>{
+    const teacherId = $('#assignTeacherSelect').value || null;
+    const btn = $('#saveAssignTeacherBtn'); btn.disabled = true;
+    try {
+      await DataLayer.updateChild(studentId, {teacherId});
+      toast('Вчителя оновлено', 'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){
+      toast(e.message || 'Помилка', 'error');
+      btn.disabled = false;
+    }
+  };
 }
 
 /* ---- Адмін: вчителі ---- */
@@ -4056,7 +4197,7 @@ async function syncUserDataFromBackend(user) {
     if (payments.status === 'fulfilled') DB.payments = payments.value;
     if (notifications.status === 'fulfilled') DB.notifications = notifications.value;
 
-    // Підтягуємо всіх користувачів для адміна/вчителя
+    // Підтягуємо всіх користувачів для адміна/вчителя/батьків
     if (user.role === 'admin') {
       const usersResp = await API.getUsers().catch(() => ({ users: [] }));
       DB.users = usersResp.users || [];
@@ -4065,12 +4206,24 @@ async function syncUserDataFromBackend(user) {
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];
+    } else if (user.role === 'parent') {
+      const childrenResp = await API.getChildren().catch(() => []);
+      DB.users = [user, ...(childrenResp || [])];
+      // Підтягуємо вчителів призначених дітей, щоб показати їх ім'я в інтерфейсі
+      const teacherIds = [...new Set((childrenResp || []).map(c => c.teacherId).filter(Boolean))];
+      for (const tId of teacherIds) {
+        if (!DB.users.find(u => u.id === tId)) {
+          const t = await API.getUser(tId).catch(() => null);
+          if (t) DB.users.push(t);
+        }
+      }
     } else {
       DB.users = [user];
-      // Додаємо вчителя
-      if (user.teacher) DB.users.push(user.teacher);
-      // Додаємо дітей (для батьків)
-      if (user.children) DB.users.push(...user.children);
+      // Додаємо вчителя (для учня зі старих окремих акаунтів)
+      if (user.teacherId) {
+        const t = await API.getUser(user.teacherId).catch(() => null);
+        if (t) DB.users.push(t);
+      }
     }
 
     // Прогрес ігор
@@ -4219,6 +4372,39 @@ const DataLayer = {
   },
   async deleteUser(id) {
     if (API_MODE) await API.deleteUser(id);
+    DB.users = DB.users.filter(u => u.id !== id);
+  },
+
+  // ── Діти (керовані батьками) ──────────────────────────────────
+  async createChild(payload) {
+    if (API_MODE) {
+      const child = await API.createChild(payload);
+      DB.users.push(child);
+      return child;
+    }
+    const child = {
+      id: uid(), role: 'student', name: payload.name, email: '', password: '',
+      grade: payload.grade, subjects: payload.subjects || [],
+      parentId: STATE.currentUser.id, managedByParent: true,
+      activationStatus: 'pending_payment', teacherId: null,
+      balance: 0, trialUsed: false, plan: null, emailVerified: true,
+    };
+    DB.users.push(child);
+    return child;
+  },
+  async updateChild(id, payload) {
+    if (API_MODE) {
+      const updated = await API.updateChild(id, payload);
+      const idx = DB.users.findIndex(u => u.id === id);
+      if (idx !== -1) DB.users[idx] = updated;
+      return updated;
+    }
+    const child = DB.users.find(u => u.id === id);
+    if (child) Object.assign(child, payload.teacherId !== undefined ? { teacherId: payload.teacherId } : payload);
+    return child;
+  },
+  async deleteChild(id) {
+    if (API_MODE) await API.deleteChild(id);
     DB.users = DB.users.filter(u => u.id !== id);
   },
 };

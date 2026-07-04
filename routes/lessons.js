@@ -3,7 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
-const { addNotification } = require('../utils');
+const { addNotification, getChildIds } = require('../utils');
 
 function formatLesson(l) {
   return {
@@ -36,9 +36,10 @@ router.get('/', auth, (req, res) => {
       lessons = db.prepare('SELECT * FROM lessons WHERE student_id = ? ORDER BY date DESC, time DESC').all(me.id);
     } else if (me.role === 'parent') {
       // Батько бачить уроки своїх дітей
-      const children = db.prepare('SELECT id FROM users WHERE teacher_id IS NULL AND role = \'student\'').all();
-      // TODO: реалізувати зв'язок батько-діти
-      lessons = [];
+      const childIds = getChildIds(db, me.id);
+      lessons = childIds.length
+        ? db.prepare(`SELECT * FROM lessons WHERE student_id IN (${childIds.map(() => '?').join(',')}) ORDER BY date DESC, time DESC`).all(...childIds)
+        : [];
     } else {
       lessons = [];
     }

@@ -68,8 +68,17 @@ function formatUser(u) {
     teacherId: u.teacher_id || null,
     bio: u.bio || null,
     subjects: u.subjects || null,
+    parentId: u.parent_id || null,
+    managedByParent: !!u.managed_by_parent,
+    activationStatus: u.activation_status || 'active',
     createdAt: u.created_at,
   };
 }
 
-module.exports = { sendEmail, addNotification, formatUser };
+// ── Батько → діти ────────────────────────────────────────────
+// Повертає масив ID дітей (users.role='student'), прив'язаних до цього батька
+function getChildIds(db, parentId) {
+  return db.prepare("SELECT id FROM users WHERE parent_id = ? AND role = 'student'").all(parentId).map(r => r.id);
+}
+
+module.exports = { sendEmail, addNotification, formatUser, getChildIds };

@@ -167,6 +167,17 @@ function initDB() {
   ensurePaymentColumn('admin_comment', 'TEXT');
   ensurePaymentColumn('reviewed_at', 'TEXT');
 
+  // ── Міграція: зв'язок батько → дитина в users ──────────────────
+  const userCols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  const ensureUserColumn = (name, definition) => {
+    if (!userCols.includes(name)) {
+      db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+    }
+  };
+  ensureUserColumn('parent_id', 'TEXT');
+  ensureUserColumn('managed_by_parent', 'INTEGER DEFAULT 0');
+  ensureUserColumn('activation_status', "TEXT DEFAULT 'active'");
+
   // Перевіряємо чи є адмін — якщо ні, створюємо дефолтного
   const adminExists = db.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get();
   if (!adminExists) {

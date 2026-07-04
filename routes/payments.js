@@ -5,7 +5,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, teacherOrAdmin, adminOnly } = require('../middleware/auth');
-const { addNotification } = require('../utils');
+const { addNotification, getChildIds } = require('../utils');
 
 const ALLOWED_CURRENCIES = ['UAH', 'EUR', 'USD'];
 const RECEIPTS_DIR = path.join(__dirname, '..', 'uploads', 'receipts');
@@ -62,6 +62,11 @@ router.get('/', auth, (req, res) => {
       payments = db.prepare('SELECT * FROM payments ORDER BY created_at DESC').all();
     } else if (me.role === 'teacher') {
       payments = db.prepare('SELECT * FROM payments WHERE teacher_id = ? ORDER BY created_at DESC').all(me.id);
+    } else if (me.role === 'parent') {
+      const childIds = getChildIds(db, me.id);
+      payments = childIds.length
+        ? db.prepare(`SELECT * FROM payments WHERE student_id IN (${childIds.map(() => '?').join(',')}) ORDER BY created_at DESC`).all(...childIds)
+        : [];
     } else {
       payments = db.prepare('SELECT * FROM payments WHERE student_id = ? ORDER BY created_at DESC').all(me.id);
     }
@@ -88,7 +93,16 @@ router.post('/', auth, (req, res) => {
       return res.status(400).json({ error: 'Невірна валюта. Дозволено: UAH, EUR, USD' });
     }
 
-    const effStudentId = studentId || req.user.id;
+    // Якщо платить батько — оплачувати можна тільки за СВОЮ дитину
+    let effStudentId = studentId || req.user.id;
+    if (req.user.role === 'parent') {
+      if (!studentId) return res.status(400).json({ error: 'Вкажіть дитину, за яку оплачуєте' });
+      const child = db.prepare("SELECT id, parent_id FROM users WHERE id = ? AND role = 'student'").get(studentId);
+      if (!child || child.parent_id !== req.user.id) {
+        return res.status(403).json({ error: 'Ви можете оплачувати навчання лише власних дітей' });
+      }
+      effStudentId = studentId;
+    }
 
     // Якщо викладача не передали — беремо закріпленого за учнем, інакше самого учня
     // (щоб не порушити NOT NULL у колонці teacher_id)
@@ -150,16 +164,24 @@ router.patch('/:id', auth, teacherOrAdmin, (req, res) => {
     `).run(status, comment || null, req.params.id);
 
     const currency = payment.currency || 'UAH';
+    // Якщо платник — дитина під керуванням батька, усі сповіщення йдуть батькові
+    // (у дитини немає власного логіна, вона нічого не побачить)
+    const payerRow = db.prepare('SELECT parent_id, managed_by_parent, name FROM users WHERE id = ?').get(payment.student_id);
+    const notifyTarget = (payerRow && payerRow.managed_by_parent && payerRow.parent_id) ? payerRow.parent_id : payment.student_id;
+    const childLabel = (payerRow && payerRow.managed_by_parent) ? ` (${payerRow.name})` : '';
 
     if (status === 'confirmed') {
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(payment.amount, payment.student_id);
-      addNotification(payment.student_id, `Платіж ${payment.amount} ${currency} підтверджено ✅ Дякуємо!`, 'payment');
+      // Активуємо дитину, якщо вона ще очікувала оплату (вчителя адмін призначає окремо вручну)
+      db.prepare("UPDATE users SET activation_status = 'active' WHERE id = ? AND activation_status = 'pending_payment'")
+        .run(payment.student_id);
+      addNotification(notifyTarget, `Платіж ${payment.amount} ${currency}${childLabel} підтверджено ✅ Дякуємо!`, 'payment');
     } else if (status === 'rejected') {
       const contact = process.env.SUPPORT_CONTACT || 'адміністратора школи';
       const reason = comment ? ` Причина: ${comment}.` : '';
       addNotification(
-        payment.student_id,
-        `Оплату ${payment.amount} ${currency} не підтверджено.${reason} Зв'яжіться з ${contact} для уточнення.`,
+        notifyTarget,
+        `Оплату ${payment.amount} ${currency}${childLabel} не підтверджено.${reason} Зв'яжіться з ${contact} для уточнення.`,
         'payment'
       );
     }

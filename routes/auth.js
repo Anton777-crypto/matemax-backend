@@ -19,9 +19,9 @@ router.post('/register', async (req, res) => {
     if (password.length < 6) {
       return res.status(400).json({ error: 'Пароль — мінімум 6 символів' });
     }
-    const allowedRoles = ['student', 'teacher', 'parent'];
+    const allowedRoles = ['teacher', 'parent'];
     if (!allowedRoles.includes(role)) {
-      return res.status(400).json({ error: 'Невірна роль' });
+      return res.status(400).json({ error: 'Реєстрація доступна лише для ролей "вчитель" та "батьки". Дітей додає батько зі свого кабінету після реєстрації.' });
     }
 
     const db = getDB();
@@ -87,6 +87,10 @@ router.post('/login', async (req, res) => {
     const db = getDB();
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
     if (!user) return res.status(401).json({ error: 'Невірний email або пароль' });
+
+    if (user.managed_by_parent) {
+      return res.status(403).json({ error: 'У дитини немає власного акаунту. Увійдіть під акаунтом батьків і оберіть дитину.' });
+    }
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Невірний email або пароль' });
