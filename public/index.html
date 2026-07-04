@@ -977,10 +977,16 @@ async function startRegistration(){
     if(btn){ btn.disabled = true; btn.textContent = 'Реєстрація...'; }
     try {
       const result = await API.register({ role, name, email, password: pass });
-      // В dev-режимі бекенд повертає devToken
-      if(result.devToken){
-        showEmailSentModal(result.devToken, email, result.verifyUrl);
+      if(result.token && result.user){
+        // Бекенд у dev-режимі (EMAIL_HOST не налаштовано) — акаунт вже підтверджено, одразу входимо
+        TokenStore.set(result.token);
+        STATE.currentUser = result.user;
+        STATE.currentPage = 'home';
+        toast(`Вітаємо, ${result.user.name}! Акаунт створено 🎉`, 'success');
+        await syncUserDataFromBackend(result.user);
+        renderApp();
       } else {
+        // Реальний email-режим — очікуємо підтвердження листом
         showEmailSentModal(null, email);
       }
     } catch(e) {

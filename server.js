@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 
 const { initDB } = require('./db');
+const { isEmailConfigured } = require('./utils');
 const authRoutes       = require('./routes/auth');
 const userRoutes       = require('./routes/users');
 const lessonRoutes     = require('./routes/lessons');
@@ -87,7 +88,7 @@ app.listen(PORT, () => {
   ╠══════════════════════════════════════╣
   ║  Порт:   ${PORT}                       ║
   ║  Режим:  ${(process.env.NODE_ENV || 'development').padEnd(15)}         ║
-  ║  Email:  ${process.env.EMAIL_HOST ? '✅ налаштовано' : '⚠️  не налаштовано'}        ║
+  ║  Email:  ${isEmailConfigured() ? '✅ налаштовано' : '⚠️  не налаштовано'}        ║
   ╚══════════════════════════════════════╝
   `);
 });

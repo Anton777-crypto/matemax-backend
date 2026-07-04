@@ -2,9 +2,37 @@ const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('./db');
 
-// ── Email транспорт ──────────────────────────────────────────
-let transporter = null;
+// ── Email: чи налаштовано хоч якийсь спосіб відправки ──────────
+// Пріоритет: Resend API (RESEND_API_KEY) → SMTP (EMAIL_HOST) → dev-режим (лог у консоль)
+function isEmailConfigured() {
+  return !!(process.env.RESEND_API_KEY || process.env.EMAIL_HOST);
+}
 
+// ── Відправка через Resend HTTP API (без SMTP) ─────────────────
+async function sendViaResend({ to, subject, html }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: process.env.EMAIL_FROM || 'МатеМакс <onboarding@resend.dev>',
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => res.statusText);
+    throw new Error(`Resend API помилка (${res.status}): ${errText}`);
+  }
+  return res.json();
+}
+
+// ── Відправка через звичайний SMTP (nodemailer) ────────────────
+let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
   if (!process.env.EMAIL_HOST) return null;
@@ -22,21 +50,33 @@ function getTransporter() {
 }
 
 async function sendEmail({ to, subject, html }) {
+  // 1) Пріоритет — Resend API, якщо є ключ (найпростіше, без SMTP)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await sendViaResend({ to, subject, html });
+      return;
+    } catch (e) {
+      console.error('Resend email error:', e.message);
+      return;
+    }
+  }
+
+  // 2) Якщо Resend не налаштовано — пробуємо звичайний SMTP
   const t = getTransporter();
   if (!t) {
-    // Без email-сервера: просто логуємо
-    console.log(`\n📧 [EMAIL] До: ${to}\n   Тема: ${subject}\n   (EMAIL_HOST не налаштовано — лист не надіслано)\n`);
+    // Жодного способу відправки не налаштовано: просто логуємо (dev-режим)
+    console.log(`\n📧 [EMAIL] До: ${to}\n   Тема: ${subject}\n   (RESEND_API_KEY / EMAIL_HOST не налаштовано — лист не надіслано)\n`);
     return;
   }
   try {
     await t.sendMail({
-      from: `"МатеМакс" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"МатеМакс" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
     });
   } catch (e) {
-    console.error('Email error:', e.message);
+    console.error('SMTP email error:', e.message);
   }
 }
 
@@ -81,4 +121,4 @@ function getChildIds(db, parentId) {
   return db.prepare("SELECT id FROM users WHERE parent_id = ? AND role = 'student'").all(parentId).map(r => r.id);
 }
 
-module.exports = { sendEmail, addNotification, formatUser, getChildIds };
+module.exports = { sendEmail, addNotification, formatUser, getChildIds, isEmailConfigured };

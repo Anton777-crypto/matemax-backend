@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, JWT_SECRET } = require('../middleware/auth');
-const { sendEmail, formatUser, addNotification } = require('../utils');
+const { sendEmail, formatUser, addNotification, isEmailConfigured } = require('../utils');
 
 const FRONTEND_URL = () => process.env.FRONTEND_URL || 'http://localhost:3001';
 
@@ -36,13 +36,13 @@ router.post('/register', async (req, res) => {
       INSERT INTO users (id, email, password_hash, name, role, phone, verify_token, email_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, email.toLowerCase().trim(), password_hash, name.trim(), role, phone || null, verify_token,
-      // Якщо EMAIL_HOST не налаштовано — верифікуємо одразу (для розробки)
-      process.env.EMAIL_HOST ? 0 : 1
+      // Якщо жодного email-сервісу не налаштовано — верифікуємо одразу (для розробки)
+      isEmailConfigured() ? 0 : 1
     );
 
     const verifyUrl = `${FRONTEND_URL()}?verify=${verify_token}`;
 
-    if (process.env.EMAIL_HOST) {
+    if (isEmailConfigured()) {
       await sendEmail({
         to: email,
         subject: 'МатеМакс — Підтвердіть ваш email',
