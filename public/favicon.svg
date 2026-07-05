@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="matemaxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5B4FD9"/>
+      <stop offset="100%" stop-color="#22C98E"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="94" height="94" rx="24" fill="url(#matemaxGrad)"/>
+  <path d="M28 70 L28 30 L50 52 L72 30 L72 70" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="50" cy="52" r="5.5" fill="#F5A623"/>
+</svg>
