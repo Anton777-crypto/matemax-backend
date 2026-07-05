@@ -668,9 +668,17 @@ const API = {
   async deleteChild(id) {
     return apiFetch('/children/' + id, { method: 'DELETE' });
   },
-  async claimChildTrial(id) {
-    const d = await apiFetch('/children/' + id + '/trial', { method: 'POST' });
+  async claimChildTrial(id, payload) {
+    const d = await apiFetch('/children/' + id + '/trial', { method: 'POST', body: payload || {} });
     return d.child;
+  },
+  async getTrialRequests() {
+    const d = await apiFetch('/trial-requests');
+    return d.requests;
+  },
+  async reviewTrialRequest(id, payload) {
+    const d = await apiFetch('/trial-requests/' + id, { method: 'PATCH', body: payload });
+    return d.request;
   },
 
   // Payouts
@@ -759,6 +767,8 @@ const DB = {
 
   // Повідомлення (чат): {id, fromId, toId, text, date, read}
   messages: [],
+  // Заявки на пробний урок (для адміна)
+  trialRequests: [],
   // Точні дані з бекенду по кожній розмові: otherId -> {lastMessage, lastDate, unread}
   conversationsMeta: {},
 
@@ -816,6 +826,7 @@ function $(sel, root=document){ return root.querySelector(sel); }
 function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function gradeLabel(g){ if(g==null || g==='') return '—'; const n = parseInt(g); return isNaN(n) ? esc(g) : n; }
 function fmtMoney(n){ return n.toLocaleString('uk-UA') + ' грн'; }
 function fmtDate(d){
   const dt = new Date(d);
@@ -1156,6 +1167,7 @@ const NAV_CONFIG = {
     {id:'admin_students', icon:'🎒', label:'Учні'},
     {id:'admin_teachers', icon:'🍎', label:'Вчителі'},
     {id:'admin_schedule', icon:'📅', label:'Розклад'},
+    {id:'admin_trials', icon:'🎁', label:'Пробні уроки'},
     {id:'admin_messages', icon:'💬', label:'Повідомлення'},
     {id:'admin_payments', icon:'💳', label:'Оплати'},
   ],
@@ -1166,7 +1178,7 @@ const PAGE_TITLES = {
   payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
   homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
   progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
-  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення', children:'Мої діти', admin_messages:'Повідомлення',
+  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення', children:'Мої діти', admin_messages:'Повідомлення', admin_trials:'Пробні уроки',
 };
 
 function avatarLetter(name){ return (name||'?').trim()[0].toUpperCase(); }
@@ -1216,13 +1228,16 @@ function renderApp(){
   const navEl = $('#sidebarNav');
   const unreadTotal = unreadCountFor(user.id);
   const newStudentCount = user.role==='admin' ? DB.notifications.filter(n=>n.userId===user.id && n.type==='new_student' && !n.read).length : 0;
+  const pendingTrialCount = user.role==='admin' ? DB.trialRequests.filter(r=>r.status==='pending').length : 0;
   nav.forEach(item=>{
     const showBadge = (item.id==='messages' || item.id==='messages_teacher' || item.id==='admin_messages') && unreadTotal>0;
     const showStudentBadge = item.id==='admin_students' && newStudentCount>0;
+    const showTrialBadge = item.id==='admin_trials' && pendingTrialCount>0;
     const it = el(`<div class="nav-item" data-page="${item.id}" style="position:relative;">
       <span class="nav-ico">${item.icon}</span>${item.label}
       ${showBadge ? `<span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${unreadTotal}</span>` : ''}
       ${showStudentBadge ? `<span style="margin-left:auto;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${newStudentCount}</span>` : ''}
+      ${showTrialBadge ? `<span style="margin-left:auto;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${pendingTrialCount}</span>` : ''}
     </div>`);
     it.onclick = ()=>{ STATE.currentPage = item.id; renderApp(); };
     navEl.appendChild(it);
@@ -1276,7 +1291,7 @@ function renderPageContent(page){
     },
     admin: {
       home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
-      admin_schedule: renderAdminSchedule, admin_messages: renderAdminMessages, admin_payments: renderAdminPayments,
+      admin_schedule: renderAdminSchedule, admin_trials: renderAdminTrials, admin_messages: renderAdminMessages, admin_payments: renderAdminPayments,
     },
   };
 
@@ -1730,16 +1745,8 @@ function renderPaymentView(c, student){
   `;
 }
 
-async function claimTrial(studentId){
-  const s = getUserById(studentId);
-  if(!s) return;
-  try {
-    await DataLayer.claimChildTrial(studentId);
-    toast('Пробний урок активовано! Адміністратор скоро зв\'яжеться щодо дати 🎉', 'success');
-    renderPageContent(STATE.currentPage);
-  } catch(e){
-    toast(e.message || 'Помилка активації пробного уроку', 'error');
-  }
+function claimTrial(studentId){
+  openTrialRequestModal(studentId);
 }
 
 let PAY_MODAL_STATE = null; // {studentId, amountUah, desc, lessonsCount, currency, receiptBase64, receiptFilename}
@@ -1940,7 +1947,7 @@ function renderParentChildren(c){
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:12px;">
               <div class="avatar" style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${avatarLetter(ch.name)}</div>
-              <div><h3 style="font-size:15.5px;">${esc(ch.name)}</h3><span class="muted">${ch.grade||'—'} клас</span></div>
+              <div><h3 style="font-size:15.5px;">${esc(ch.name)}</h3><span class="muted">${gradeLabel(ch.grade)} клас</span></div>
             </div>
             ${childStatusBadge(ch)}
           </div>
@@ -2026,17 +2033,47 @@ async function removeChild(childId){
   } catch(e){ toast(e.message || 'Помилка видалення', 'error'); }
 }
 
-async function claimChildTrialUI(childId){
+function claimChildTrialUI(childId){
+  openTrialRequestModal(childId);
+}
+
+function openTrialRequestModal(childId){
   const ch = getUserById(childId);
   if(!ch) return;
-  if(!confirm(`Активувати безкоштовний пробний урок для «${ch.name}»? Адміністратор зв'яжеться, щоб узгодити дату й час.`)) return;
-  try {
-    await DataLayer.claimChildTrial(childId);
-    toast('Пробний урок активовано! Адміністратор скоро зв\'яжеться щодо дати 🎉', 'success');
-    renderPageContent(STATE.currentPage);
-  } catch(e){
-    toast(e.message || 'Помилка активації', 'error');
-  }
+  const u = STATE.currentUser;
+  const defaultParentName = u.role==='parent' ? u.name : '';
+  const defaultContact = u.phone || '';
+  openModal(`
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-head"><h3>🎁 Пробний урок</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:16px;">Уточніть, будь ласка, дані — адміністратор зв'яжеться з вами, щоб узгодити точний час.</p>
+        <div class="field"><label>Ім'я та прізвище батьків</label><input id="trialParentName" placeholder="Ім'я Прізвище" value="${esc(defaultParentName)}"></div>
+        <div class="field"><label>Ім'я та прізвище учня</label><input id="trialStudentName" placeholder="Ім'я Прізвище" value="${esc(ch.name)}"></div>
+        <div class="field"><label>Контакт для звʼязку (телефон або Telegram)</label><input id="trialContact" placeholder="+380... або @nickname" value="${esc(defaultContact)}"></div>
+        <div class="field"><label>Зручний час для уроку</label><input id="trialPreferredTime" placeholder="напр. будні після 15:00"></div>
+        <button class="btn btn-accent btn-block" id="trialSubmitBtn">Надіслати заявку</button>
+      </div>
+    </div>
+  `);
+  $('#trialSubmitBtn').onclick = async ()=>{
+    const parentName = $('#trialParentName').value.trim();
+    const studentName = $('#trialStudentName').value.trim();
+    const contact = $('#trialContact').value.trim();
+    const preferredTime = $('#trialPreferredTime').value.trim();
+    if(!contact){ toast('Вкажіть контакт для звʼязку', 'error'); return; }
+    if(!studentName){ toast("Вкажіть ім'я учня", 'error'); return; }
+    const btn = $('#trialSubmitBtn'); btn.disabled = true;
+    try {
+      await DataLayer.claimChildTrial(childId, {parentName, studentName, contact, preferredTime});
+      toast('Заявку надіслано! Адміністратор скоро зв\'яжеться щодо дати 🎉', 'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){
+      toast(e.message || 'Помилка активації', 'error');
+      btn.disabled = false;
+    }
+  };
 }
 
 function goPayForChild(childId){
@@ -2059,7 +2096,7 @@ function renderParentHome(c){
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
             <div style="display:flex;align-items:center;gap:12px;">
               <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(ch.name)}</div>
-              <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${ch.grade||'—'} клас</span></div>
+              <div><h3 style="font-size:16px;">${esc(ch.name)}</h3><span class="muted">${gradeLabel(ch.grade)} клас</span></div>
             </div>
             ${childStatusBadge(ch)}
           </div>
@@ -2148,7 +2185,7 @@ function renderParentProgress(c){
     const pct = allHw.length ? Math.round(doneHw.length/allHw.length*100) : 0;
     return `
       <div class="card" style="margin-bottom:18px;">
-        <div class="section-title">📈 ${esc(ch.name)} — ${ch.grade} клас</div>
+        <div class="section-title">📈 ${esc(ch.name)} — ${gradeLabel(ch.grade)} клас</div>
         <div class="grid grid-3" style="margin-bottom:18px;">
           <div class="card stat-card" style="box-shadow:none;border:1px solid var(--border);">
             <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">⭐</div>
@@ -2286,7 +2323,7 @@ function renderTeacherStudents(c){
         <div class="card card-hover">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
             <div class="avatar" style="width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;">${avatarLetter(s.name)}</div>
-            <div><h3 style="font-size:15.5px;">${esc(s.name)}</h3><span class="muted">${s.grade} клас</span></div>
+            <div><h3 style="font-size:15.5px;">${esc(s.name)}</h3><span class="muted">${gradeLabel(s.grade)} клас</span></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <span class="badge">📅 ${upcoming} уроків</span>
@@ -2953,7 +2990,7 @@ function renderAdminHome(c){
             const teacher = getUserById(s.teacherId);
             const used = planUsedLessons(s), total = planTotalLessons(s);
             return `<tr style="cursor:pointer;" onclick="openAdminStudentProfile('${s.id}')">
-              <td><b>${esc(s.name)}</b></td><td>${s.grade} клас</td><td>${teacher?esc(teacher.name):'—'}</td>
+              <td><b>${esc(s.name)}</b></td><td>${gradeLabel(s.grade)} клас</td><td>${teacher?esc(teacher.name):'—'}</td>
               <td>${s.plan ? esc(s.plan.label) : (s.trialUsed?'Разово':'Пробний доступний')}</td>
               <td>${used} / ${total||'—'}</td>
               <td><span class="badge">Деталі →</span></td>
@@ -3094,7 +3131,7 @@ function renderAdminStudentProfileContent(){
       <div class="grid grid-3" style="margin-bottom:18px;">
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
           <div class="muted" style="margin-bottom:4px;">Клас / Вчитель</div>
-          <b>${s.grade} клас · ${teacher?esc(teacher.name):'не призначено'}</b>
+          <b>${gradeLabel(s.grade)} клас · ${teacher?esc(teacher.name):'не призначено'}</b>
           <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="closeModal(); openAssignTeacherModal('${s.id}');">🍎 Змінити вчителя</button>
         </div>
         <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
@@ -3185,7 +3222,7 @@ function renderAdminStudents(c){
               : '<span class="badge badge-accent">Активний</span>';
             return `<tr>
               <td style="cursor:pointer;" onclick="openAdminStudentProfile('${s.id}')"><b>${esc(s.name)}</b></td>
-              <td>${s.grade||'—'} клас</td>
+              <td>${gradeLabel(s.grade)} клас</td>
               <td>${parent?esc(parent.name):'—'}</td>
               <td>${statusBadge}</td>
               <td>${teacher?esc(teacher.name):'<span class="muted">не призначено</span>'}</td>
@@ -3481,6 +3518,91 @@ async function deleteLesson(lessonId){
 }
 
 /* ---- Адмін: оплати з історією та чатом підтвердження ---- */
+/* ---- Адмін: заявки на пробний урок ---- */
+function renderAdminTrials(c){
+  const requests = DB.trialRequests.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const statusBadge = (st)=> st==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
+    : st==='rejected' ? '<span class="badge badge-danger">Відхилено</span>'
+    : '<span class="badge badge-warn">Очікує</span>';
+
+  c.innerHTML = `
+    <div class="card">
+      <div class="section-title">🎁 Заявки на пробний урок (${requests.length})</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата заявки</th><th>Учень</th><th>Батьки</th><th>Контакт</th><th>Бажаний час</th><th>Статус</th><th>Дії</th></tr></thead>
+        <tbody>
+          ${requests.map(r=>`
+            <tr>
+              <td>${fmtDate(r.createdAt)}</td>
+              <td><b>${esc(r.studentName||'—')}</b></td>
+              <td>${esc(r.parentName||'—')}</td>
+              <td>${esc(r.contact||'—')}</td>
+              <td>${esc(r.preferredTime||'—')}</td>
+              <td>
+                ${statusBadge(r.status)}
+                ${r.status==='confirmed' && r.scheduledDate ? `<div class="muted" style="font-size:12px;margin-top:4px;">${fmtDate(r.scheduledDate)} о ${esc(r.scheduledTime||'')}</div>` : ''}
+                ${r.status==='rejected' && r.adminComment ? `<div class="muted" style="font-size:12px;margin-top:4px;">${esc(r.adminComment)}</div>` : ''}
+              </td>
+              <td>
+                ${r.status==='pending' ? `
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn btn-sm btn-accent" onclick="openConfirmTrialModal('${r.id}')">✅ Підтвердити</button>
+                    <button class="btn btn-sm btn-danger" onclick="rejectTrialRequest('${r.id}')">❌ Відхилити</button>
+                  </div>
+                ` : '<span class="muted">—</span>'}
+              </td>
+            </tr>
+          `).join('') || `<tr><td colspan="7" class="muted" style="text-align:center;">Заявок ще немає</td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+function openConfirmTrialModal(reqId){
+  const r = DB.trialRequests.find(x=>x.id===reqId);
+  if(!r) return;
+  openModal(`
+    <div class="modal-box" style="max-width:400px;">
+      <div class="modal-head"><h3>✅ Підтвердити пробний урок</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:14px;">Учень: <b>${esc(r.studentName)}</b> · Контакт: <b>${esc(r.contact)}</b>${r.preferredTime?` · Бажано: ${esc(r.preferredTime)}`:''}</p>
+        <div class="field-row">
+          <div class="field"><label>Дата уроку</label><input type="date" id="trialSchedDate"></div>
+          <div class="field"><label>Час</label><input type="time" id="trialSchedTime"></div>
+        </div>
+        <button class="btn btn-accent btn-block" id="confirmTrialBtn">Підтвердити та повідомити</button>
+      </div>
+    </div>
+  `);
+  $('#confirmTrialBtn').onclick = async ()=>{
+    const scheduledDate = $('#trialSchedDate').value;
+    const scheduledTime = $('#trialSchedTime').value;
+    if(!scheduledDate || !scheduledTime){ toast('Вкажіть дату і час', 'error'); return; }
+    const btn = $('#confirmTrialBtn'); btn.disabled = true;
+    try {
+      await DataLayer.reviewTrialRequest(reqId, {status:'confirmed', scheduledDate, scheduledTime});
+      toast('Заявку підтверджено, батьків повідомлено', 'success');
+      closeModal();
+      renderPageContent('admin_trials');
+    } catch(e){
+      toast(e.message || 'Помилка', 'error');
+      btn.disabled = false;
+    }
+  };
+}
+
+async function rejectTrialRequest(reqId){
+  const comment = prompt('Коротка причина відхилення (необовʼязково, побачить батьки):', '') || '';
+  try {
+    await DataLayer.reviewTrialRequest(reqId, {status:'rejected', comment});
+    toast('Заявку відхилено', 'info');
+    renderPageContent('admin_trials');
+  } catch(e){
+    toast(e.message || 'Помилка', 'error');
+  }
+}
+
 function renderAdminPayments(c){
   const totalRevenue = DB.payments.reduce((a,b)=>a+b.amount,0);
   c.innerHTML = `
@@ -4710,6 +4832,7 @@ async function syncUserDataFromBackend(user) {
       DB.users = usersResp.users || [];
       // Додаємо поточного юзера якщо нема
       if (!DB.users.find(u => u.id === user.id)) DB.users.push(user);
+      DB.trialRequests = await API.getTrialRequests().catch(() => []);
     } else if (user.role === 'teacher') {
       const studentsResp = await API.getUsers('student').catch(() => ({ users: [] }));
       DB.users = [user, ...(studentsResp.users || [])];
@@ -4956,9 +5079,9 @@ const DataLayer = {
     if (API_MODE) await API.deleteChild(id);
     DB.users = DB.users.filter(u => u.id !== id);
   },
-  async claimChildTrial(id) {
+  async claimChildTrial(id, payload) {
     if (API_MODE) {
-      const updated = await API.claimChildTrial(id);
+      const updated = await API.claimChildTrial(id, payload);
       const idx = DB.users.findIndex(u => u.id === id);
       if (idx !== -1) DB.users[idx] = updated;
       return updated;
@@ -4966,6 +5089,16 @@ const DataLayer = {
     const child = DB.users.find(u => u.id === id);
     if (child) { child.activationStatus = 'active'; child.trialUsed = true; }
     return child;
+  },
+  async getTrialRequests() {
+    if (API_MODE) return API.getTrialRequests();
+    return DB.trialRequests || [];
+  },
+  async reviewTrialRequest(id, payload) {
+    if (API_MODE) return API.reviewTrialRequest(id, payload);
+    const r = (DB.trialRequests || []).find(x => x.id === id);
+    if (r) Object.assign(r, payload);
+    return r;
   },
 };
 

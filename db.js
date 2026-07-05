@@ -88,6 +88,23 @@ function initDB() {
       FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    -- ── Заявки на пробний урок ──────────────────────────────────
+    CREATE TABLE IF NOT EXISTS trial_requests (
+      id              TEXT PRIMARY KEY,
+      student_id      TEXT NOT NULL,
+      parent_id       TEXT,
+      parent_name     TEXT,
+      student_name    TEXT,
+      contact         TEXT,
+      preferred_time  TEXT,
+      status          TEXT DEFAULT 'pending',
+      scheduled_date  TEXT,
+      scheduled_time  TEXT,
+      admin_comment   TEXT,
+      created_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     -- ── Платежі ──────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS payments (
       id                TEXT PRIMARY KEY,

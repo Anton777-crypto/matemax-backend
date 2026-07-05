@@ -169,7 +169,7 @@ router.delete('/:id', auth, (req, res) => {
 
 // ── POST /api/children/:id/trial ──────────────────────────────────
 // Батько активує безкоштовний пробний урок дитини — без оплати, миттєво.
-// Адміністратор отримує сповіщення і сам плане дату/час уроку.
+// Створюється заявка для адміністратора з контактами та бажаним часом.
 router.post('/:id/trial', auth, (req, res) => {
   try {
     const db = getDB();
@@ -183,15 +183,27 @@ router.post('/:id/trial', auth, (req, res) => {
     }
     if (child.trial_used) return res.status(400).json({ error: 'Пробний урок вже використано' });
 
+    const { preferredTime, contact, parentName, studentName } = req.body;
+    if (!contact || !contact.trim()) {
+      return res.status(400).json({ error: 'Вкажіть контактні дані для зв\'язку' });
+    }
+
     db.prepare("UPDATE users SET activation_status = 'active', trial_used = 1 WHERE id = ?").run(child.id);
 
+    const requestId = uuidv4();
+    db.prepare(`
+      INSERT INTO trial_requests (id, student_id, parent_id, parent_name, student_name, contact, preferred_time, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+    `).run(
+      requestId, child.id, isOwnerParent ? req.user.id : null,
+      (parentName || '').trim() || null, (studentName || '').trim() || child.name,
+      contact.trim(), (preferredTime || '').trim() || null
+    );
+
     const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
-    const notifierName = isOwnerParent
-      ? (db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id)?.name || 'Батьки')
-      : child.name;
     admins.forEach(a => addNotification(
       a.id,
-      `${notifierName}: дитині «${child.name}» потрібно запланувати БЕЗКОШТОВНИЙ пробний урок 🎁`,
+      `🎁 Нова заявка на пробний урок: «${(studentName||child.name)}» — потрібно підтвердити дату`,
       'trial'
     ));
 
