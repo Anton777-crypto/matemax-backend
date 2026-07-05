@@ -44,6 +44,9 @@ app.use(cors({
 app.use(helmet({
   // crossOriginResourcePolicy вимкнено, щоб не блокувати завантажені файли (uploads) з фронтенду
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // CSP вимкнено: фронтенд — це один HTML-файл із вбудованими <script>/<style>,
+  // стандартна CSP від helmet блокує inline-код і "кладе" весь сайт (білий екран).
+  contentSecurityPolicy: false,
 }));
 app.use(express.json({ limit: '20mb' }));   // 20MB — для base64 аудіо/зображень
 app.use(express.urlencoded({ extended: true }));
