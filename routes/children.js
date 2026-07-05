@@ -82,7 +82,7 @@ router.post('/', auth, async (req, res) => {
 
     const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
     const parent = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id);
-    admins.forEach(a => addNotification(a.id, `${parent?.name || 'Батьки'} додав(ла) дитину «${name.trim()}» — очікує оплати`, 'info'));
+    admins.forEach(a => addNotification(a.id, `${parent?.name || 'Батьки'} додав(ла) дитину «${name.trim()}» — очікує оплати`, 'new_student'));
 
     res.json({ child: formatChild(child) });
   } catch (e) {
@@ -192,7 +192,7 @@ router.post('/:id/trial', auth, (req, res) => {
     admins.forEach(a => addNotification(
       a.id,
       `${notifierName}: дитині «${child.name}» потрібно запланувати БЕЗКОШТОВНИЙ пробний урок 🎁`,
-      'info'
+      'trial'
     ));
 
     const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(child.id);

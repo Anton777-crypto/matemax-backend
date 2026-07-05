@@ -39,4 +39,16 @@ router.patch('/read-all', auth, (req, res) => {
   }
 });
 
+// ── PATCH /api/notifications/read-type/:type ──────────────────
+// Позначає прочитаними сповіщення лише конкретного типу (напр. new_student, trial)
+router.patch('/read-type/:type', auth, (req, res) => {
+  try {
+    const db = getDB();
+    db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND type = ?').run(req.user.id, req.params.type);
+    res.json({ message: 'Сповіщення позначено як прочитані' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

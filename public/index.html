@@ -705,6 +705,9 @@ const API = {
   async markNotificationsRead() {
     return apiFetch('/notifications/read-all', { method: 'PATCH' });
   },
+  async markNotificationsReadByType(type) {
+    return apiFetch('/notifications/read-type/' + type, { method: 'PATCH' });
+  },
 
   // Games
   async getGameProgress(studentId) {
@@ -1133,6 +1136,7 @@ const NAV_CONFIG = {
     {id:'add_lesson', icon:'➕', label:'Додати урок'},
     {id:'homework_teacher', icon:'📝', label:'ДЗ'},
     {id:'add_material', icon:'📤', label:'Завантажити матеріал'},
+    {id:'games', icon:'🎮', label:'Ігри'},
     {id:'messages_teacher', icon:'💬', label:'Повідомлення'},
     {id:'payouts', icon:'💰', label:'Виплати'},
   ],
@@ -1211,11 +1215,14 @@ function renderApp(){
 
   const navEl = $('#sidebarNav');
   const unreadTotal = unreadCountFor(user.id);
+  const newStudentCount = user.role==='admin' ? DB.notifications.filter(n=>n.userId===user.id && n.type==='new_student' && !n.read).length : 0;
   nav.forEach(item=>{
     const showBadge = (item.id==='messages' || item.id==='messages_teacher' || item.id==='admin_messages') && unreadTotal>0;
+    const showStudentBadge = item.id==='admin_students' && newStudentCount>0;
     const it = el(`<div class="nav-item" data-page="${item.id}" style="position:relative;">
       <span class="nav-ico">${item.icon}</span>${item.label}
       ${showBadge ? `<span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${unreadTotal}</span>` : ''}
+      ${showStudentBadge ? `<span style="margin-left:auto;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${newStudentCount}</span>` : ''}
     </div>`);
     it.onclick = ()=>{ STATE.currentPage = item.id; renderApp(); };
     navEl.appendChild(it);
@@ -1260,7 +1267,7 @@ function renderPageContent(page){
     teacher: {
       home: renderTeacherHome, my_schedule: renderTeacherSchedule, students: renderTeacherStudents,
       add_lesson: renderAddLesson, homework_teacher: renderTeacherHomework, add_material: renderAddMaterial,
-      payouts: renderTeacherPayouts, messages_teacher: renderTeacherMessages,
+      games: renderGamesHub, payouts: renderTeacherPayouts, messages_teacher: renderTeacherMessages,
     },
     parent: {
       home: renderParentHome, children: renderParentChildren, schedule: renderParentSchedule, homework: renderParentHomework,
@@ -3153,6 +3160,14 @@ function renderAdminStudentProfileContent(){
 
 function renderAdminStudents(c){
   const students = DB.users.filter(u=>u.role==='student');
+  // Позначаємо сповіщення про нових учнів прочитаними — бейдж у меню зникне
+  const hasUnreadNewStudent = DB.notifications.some(n=>n.userId===STATE.currentUser.id && n.type==='new_student' && !n.read);
+  if(hasUnreadNewStudent){
+    DB.notifications.forEach(n=>{ if(n.type==='new_student') n.read = true; });
+    if(API_MODE) API.markNotificationsReadByType('new_student').catch(()=>{});
+    renderApp(); // перемальовуємо сайдбар, щоб бейдж зник одразу
+    return;
+  }
   c.innerHTML = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
       <button class="btn btn-accent btn-sm" id="addStudentBtn2">➕ Додати учня</button>
@@ -4687,7 +4702,7 @@ async function syncUserDataFromBackend(user) {
     if (homework.status === 'fulfilled') DB.homework = homework.value.map(adaptHomework);
     if (materials.status === 'fulfilled') DB.materials = adaptMaterials(materials.value);
     if (payments.status === 'fulfilled') DB.payments = payments.value;
-    if (notifications.status === 'fulfilled') DB.notifications = notifications.value;
+    if (notifications.status === 'fulfilled') DB.notifications = (notifications.value || []).map(n => ({ ...n, userId: user.id }));
 
     // Підтягуємо всіх користувачів для адміна/вчителя/батьків
     if (user.role === 'admin') {
