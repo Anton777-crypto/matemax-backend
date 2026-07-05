@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, adminOnly } = require('../middleware/auth');
 const { addNotification } = require('../utils');
@@ -34,33 +35,62 @@ router.get('/', auth, adminOnly, (req, res) => {
 });
 
 // ── PATCH /api/trial-requests/:id ───────────────────────────────
-// Адмін підтверджує (з датою/часом) або відхиляє заявку
+// Адмін підтверджує (з датою/часом і вчителем — створюється реальний урок
+// у розкладі) або відхиляє заявку.
 router.patch('/:id', auth, adminOnly, (req, res) => {
   try {
     const db = getDB();
     const reqRow = db.prepare('SELECT * FROM trial_requests WHERE id = ?').get(req.params.id);
     if (!reqRow) return res.status(404).json({ error: 'Заявку не знайдено' });
 
-    const { status, scheduledDate, scheduledTime, comment } = req.body;
+    const { status, scheduledDate, scheduledTime, teacherId, comment } = req.body;
     if (!['confirmed', 'rejected'].includes(status)) {
       return res.status(400).json({ error: 'Невірний статус' });
     }
-
-    db.prepare(`
-      UPDATE trial_requests SET status = ?, scheduled_date = ?, scheduled_time = ?, admin_comment = ?
-      WHERE id = ?
-    `).run(status, scheduledDate || null, scheduledTime || null, comment || null, req.params.id);
 
     // Кому сповіщати: батько, якщо є, інакше сам учень (старий окремий акаунт)
     const notifyTarget = reqRow.parent_id || reqRow.student_id;
 
     if (status === 'confirmed') {
+      if (!scheduledDate || !scheduledTime) {
+        return res.status(400).json({ error: 'Вкажіть дату і час уроку' });
+      }
+      if (!teacherId) {
+        return res.status(400).json({ error: 'Оберіть вчителя для пробного уроку' });
+      }
+      const teacher = db.prepare("SELECT id, name FROM users WHERE id = ? AND role = 'teacher'").get(teacherId);
+      if (!teacher) return res.status(400).json({ error: 'Вчителя не знайдено' });
+
+      // Призначаємо вчителя учню, якщо ще не призначений
+      db.prepare("UPDATE users SET teacher_id = ? WHERE id = ? AND teacher_id IS NULL").run(teacherId, reqRow.student_id);
+
+      // Створюємо реальний урок у розкладі
+      const lessonId = uuidv4();
+      db.prepare(`
+        INSERT INTO lessons (id, student_id, teacher_id, subject, date, time, trial, status)
+        VALUES (?, ?, ?, 'Пробний урок', ?, ?, 1, 'planned')
+      `).run(lessonId, reqRow.student_id, teacherId, scheduledDate, scheduledTime);
+
+      db.prepare(`
+        UPDATE trial_requests SET status = 'confirmed', scheduled_date = ?, scheduled_time = ?, admin_comment = ?
+        WHERE id = ?
+      `).run(scheduledDate, scheduledTime, comment || null, req.params.id);
+
       addNotification(
         notifyTarget,
-        `✅ Пробний урок для «${reqRow.student_name}» підтверджено: ${scheduledDate || ''} о ${scheduledTime || ''}`,
+        `✅ Пробний урок для «${reqRow.student_name}» підтверджено: ${scheduledDate} о ${scheduledTime}. Вчитель: ${teacher.name}`,
         'trial'
       );
+      addNotification(
+        teacherId,
+        `Вам призначено пробний урок з «${reqRow.student_name}»: ${scheduledDate} о ${scheduledTime}`,
+        'lesson'
+      );
     } else {
+      db.prepare(`
+        UPDATE trial_requests SET status = 'rejected', admin_comment = ? WHERE id = ?
+      `).run(comment || null, req.params.id);
+
       const reason = comment ? ` Причина: ${comment}.` : '';
       addNotification(
         notifyTarget,
