@@ -126,13 +126,15 @@ function initDB() {
 
     -- ── Виплати вчителям ─────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS payouts (
-      id          TEXT PRIMARY KEY,
-      teacher_id  TEXT NOT NULL,
-      amount      REAL NOT NULL,
-      method      TEXT,
-      details     TEXT,
-      status      TEXT DEFAULT 'pending',
-      created_at  TEXT DEFAULT (datetime('now')),
+      id            TEXT PRIMARY KEY,
+      teacher_id    TEXT NOT NULL,
+      amount        REAL NOT NULL,
+      method        TEXT,
+      details       TEXT,
+      note          TEXT,
+      receipt_url   TEXT,
+      status        TEXT DEFAULT 'paid',
+      created_at    TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
@@ -197,6 +199,17 @@ function initDB() {
   ensureUserColumn('managed_by_parent', 'INTEGER DEFAULT 0');
   ensureUserColumn('activation_status', "TEXT DEFAULT 'active'");
   ensureUserColumn('grade', 'TEXT');
+  ensureUserColumn('rate_per_lesson', 'REAL DEFAULT 175');
+
+  // ── Міграція: чек/примітка для payouts, якщо їх ще немає ──────
+  const payoutCols = db.prepare('PRAGMA table_info(payouts)').all().map(c => c.name);
+  const ensurePayoutColumn = (name, definition) => {
+    if (!payoutCols.includes(name)) {
+      db.exec(`ALTER TABLE payouts ADD COLUMN ${name} ${definition}`);
+    }
+  };
+  ensurePayoutColumn('note', 'TEXT');
+  ensurePayoutColumn('receipt_url', 'TEXT');
 
   // ── Міграція: desc/file_name для materials, якщо їх ще немає ──
   const materialCols = db.prepare('PRAGMA table_info(materials)').all().map(c => c.name);

@@ -60,15 +60,16 @@ router.get('/', auth, (req, res) => {
 
     if (me.role === 'admin') {
       payments = db.prepare('SELECT * FROM payments ORDER BY created_at DESC').all();
-    } else if (me.role === 'teacher') {
-      payments = db.prepare('SELECT * FROM payments WHERE teacher_id = ? ORDER BY created_at DESC').all(me.id);
     } else if (me.role === 'parent') {
       const childIds = getChildIds(db, me.id);
       payments = childIds.length
         ? db.prepare(`SELECT * FROM payments WHERE student_id IN (${childIds.map(() => '?').join(',')}) ORDER BY created_at DESC`).all(...childIds)
         : [];
-    } else {
+    } else if (me.role === 'student') {
       payments = db.prepare('SELECT * FROM payments WHERE student_id = ? ORDER BY created_at DESC').all(me.id);
+    } else {
+      // Вчитель НЕ бачить суми оплат учнів школі — це конфіденційна інформація
+      payments = [];
     }
 
     res.json({ payments: payments.map(formatPayment) });

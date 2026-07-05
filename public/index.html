@@ -682,13 +682,19 @@ const API = {
   },
 
   // Payouts
-  async getPayouts() {
-    const d = await apiFetch('/payouts');
+  async getPayouts(teacherId) {
+    const d = await apiFetch('/payouts' + (teacherId ? '?teacherId=' + teacherId : ''));
     return d.payouts;
+  },
+  async getPayoutSummary(teacherId) {
+    return apiFetch('/payouts/summary' + (teacherId ? '?teacherId=' + teacherId : ''));
   },
   async createPayout(payload) {
     const d = await apiFetch('/payouts', { method: 'POST', body: payload });
-    return d.payout;
+    return d;
+  },
+  async deletePayout(id) {
+    return apiFetch('/payouts/' + id, { method: 'DELETE' });
   },
 
   // Messages
@@ -762,6 +768,8 @@ const DB = {
   materials: [],
   homework: [],
   payments: [],
+  payouts: [],
+  payoutSummary: null,
 
   gameProgress: {}, // studentId -> {gameId: {bestScore, plays, lastPlayed}}
 
@@ -1170,6 +1178,7 @@ const NAV_CONFIG = {
     {id:'admin_trials', icon:'🎁', label:'Пробні уроки'},
     {id:'admin_messages', icon:'💬', label:'Повідомлення'},
     {id:'admin_payments', icon:'💳', label:'Оплати'},
+    {id:'admin_payouts', icon:'💰', label:'Виплати вчителям'},
   ],
 };
 
@@ -1178,7 +1187,7 @@ const PAGE_TITLES = {
   payment:'Оплата', my_schedule:'Мій розклад', students:'Учні', add_lesson:'Додати урок',
   homework_teacher:'Домашні завдання', add_material:'Завантажити матеріал', payouts:'Виплати',
   progress:'Прогрес дитини', admin_students:'Учні', admin_teachers:'Вчителі', admin_schedule:'Розклад',
-  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення', children:'Мої діти', admin_messages:'Повідомлення', admin_trials:'Пробні уроки',
+  admin_payments:'Оплати', messages:'Повідомлення', messages_teacher:'Повідомлення', children:'Мої діти', admin_messages:'Повідомлення', admin_trials:'Пробні уроки', admin_payouts:'Виплати вчителям',
 };
 
 function avatarLetter(name){ return (name||'?').trim()[0].toUpperCase(); }
@@ -1291,7 +1300,8 @@ function renderPageContent(page){
     },
     admin: {
       home: renderAdminHome, admin_students: renderAdminStudents, admin_teachers: renderAdminTeachers,
-      admin_schedule: renderAdminSchedule, admin_trials: renderAdminTrials, admin_messages: renderAdminMessages, admin_payments: renderAdminPayments,
+      admin_schedule: renderAdminSchedule, admin_trials: renderAdminTrials, admin_messages: renderAdminMessages,
+      admin_payments: renderAdminPayments, admin_payouts: renderAdminPayoutsPage,
     },
   };
 
@@ -1404,7 +1414,12 @@ function renderScheduleView(c, lessons, opts={}){
             <tr>
               <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${esc(l.subject)}</td>
               <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
-              <td>${l.status==='planned'?`<a href="${l.meetUrl}" target="_blank" class="btn btn-sm btn-outline">📹 Meet</a>`:''}</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  ${l.status==='planned' && l.meetUrl?`<a href="${l.meetUrl}" target="_blank" class="btn btn-sm btn-outline">📹 Meet</a>`:''}
+                  ${opts.showComplete && l.status==='planned' ? `<button class="btn btn-sm btn-accent" onclick="markLessonCompleteUI('${l.id}')">✅ Проведено</button>` : ''}
+                </div>
+              </td>
             </tr>
           `).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Немає уроків</td></tr>`}
         </tbody>
@@ -2307,7 +2322,23 @@ function renderTeacherSchedule(c){
   const u = STATE.currentUser;
   const lessons = DB.lessons.filter(l=>l.teacherId===u.id).sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
   const enriched = lessons.map(l=>({...l, subject: (getUserById(l.studentId)?.name||'') + ' — ' + l.subject}));
-  renderScheduleView(c, enriched, {showJoin:true});
+  renderScheduleView(c, enriched, {showJoin:true, showComplete:true});
+}
+
+async function markLessonCompleteUI(lessonId){
+  if(!confirm('Позначити урок проведеним? Це нарахує вам оплату за урок.')) return;
+  try {
+    await DataLayer.completeLesson(lessonId);
+    toast('Урок позначено проведеним ✅', 'success');
+    // Оновлюємо дані про заробіток одразу
+    if(API_MODE){
+      DB.payoutSummary = await API.getPayoutSummary().catch(()=>DB.payoutSummary);
+      DB.payouts = await API.getPayouts().catch(()=>DB.payouts);
+    }
+    renderPageContent(STATE.currentPage);
+  } catch(e){
+    toast(e.message || 'Помилка', 'error');
+  }
 }
 
 function renderTeacherStudents(c){
@@ -2736,49 +2767,58 @@ function renderAddMaterial(c){
 
 function renderTeacherPayouts(c){
   const u = STATE.currentUser;
-  const payouts = u.payouts || [];
-  const totalPaid = payouts.filter(p=>p.status==='paid').reduce((a,b)=>a+b.amount,0);
+  const summary = DB.payoutSummary || {ratePerLesson:175, completedLessons:0, totalEarned:0, totalPaid:0, balance:0};
+  const payouts = DB.payouts || [];
   const students = getStudentsOf(u.id);
+
   c.innerHTML = `
-    <div class="grid grid-2" style="margin-bottom:18px;">
+    <div class="grid grid-3" style="margin-bottom:18px;">
       <div class="card stat-card">
-        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">💰</div>
-        <div><div class="stat-val">${fmtMoney(totalPaid)}</div><div class="stat-lbl">Виплачено всього</div></div>
+        <div class="stat-ico" style="background:var(--primary-light);color:var(--primary);">📚</div>
+        <div><div class="stat-val">${summary.completedLessons}</div><div class="stat-lbl">Проведено уроків</div></div>
       </div>
       <div class="card stat-card">
-        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">⏳</div>
-        <div><div class="stat-val">${payouts.filter(p=>p.status==='pending').length}</div><div class="stat-lbl">Очікують виплати</div></div>
+        <div class="stat-ico" style="background:var(--accent-light);color:var(--accent-dark);">💰</div>
+        <div><div class="stat-val">${fmtMoney(summary.totalPaid)}</div><div class="stat-lbl">Вже виплачено</div></div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-ico" style="background:${summary.balance>0?'#FFF3E0':'var(--accent-light)'};color:${summary.balance>0?'var(--warning)':'var(--accent-dark)'};">⏳</div>
+        <div><div class="stat-val">${fmtMoney(summary.balance)}</div><div class="stat-lbl">Залишок до сплати</div></div>
       </div>
     </div>
 
     <div class="card" style="margin-bottom:18px;">
-      <div class="section-title">🎒 Мої учні — оплати та залишок занять</div>
+      <p class="muted">Ставка: <b>${fmtMoney(summary.ratePerLesson)}</b> за один проведений урок. Нараховується автоматично одразу після того, як урок позначено виконаним. Адміністрація виплачує зарплату зазвичай 2 рази на місяць.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-title">🎒 Мої учні</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Учень</th><th>Тариф</th><th>Сплачено всього</th><th>Пройдено</th><th>Залишилось занять</th></tr></thead>
+        <thead><tr><th>Учень</th><th>Клас</th><th>Пройдено уроків</th></tr></thead>
         <tbody>
           ${students.map(s=>{
-            const paidTotal = DB.payments.filter(p=>p.studentId===s.id && p.status==='confirmed').reduce((a,b)=>a+b.amount,0);
-            const used = planUsedLessons(s), remaining = planRemainingLessons(s);
+            const used = planUsedLessons(s);
             return `<tr>
-              <td><b>${esc(s.name)}</b> <span class="muted">(${s.grade} кл.)</span></td>
-              <td>${s.plan?esc(s.plan.label):(s.trialUsed?'Разово':'Пробний')}</td>
-              <td>${fmtMoney(paidTotal)}</td>
+              <td><b>${esc(s.name)}</b></td>
+              <td>${gradeLabel(s.grade)} кл.</td>
               <td>${used}</td>
-              <td>${remaining>0?`<span class="badge badge-accent">${remaining} занять</span>`:'<span class="badge badge-warn">тариф завершується</span>'}</td>
             </tr>`;
-          }).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
+          }).join('') || `<tr><td colspan="3" class="muted" style="text-align:center;">Учнів ще немає</td></tr>`}
         </tbody>
       </table></div>
     </div>
 
     <div class="card">
-      <div class="section-title">💰 Історія виплат</div>
+      <div class="section-title">💰 Історія виплат від адміністрації</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Дата</th><th>Уроків</th><th>Сума</th><th>Статус</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Сума</th><th>Коментар</th><th>Чек</th></tr></thead>
         <tbody>
-          ${payouts.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${p.lessons}</td><td>${fmtMoney(p.amount)}</td>
-            <td>${p.status==='paid'?'<span class="badge badge-accent">Виплачено</span>':'<span class="badge badge-warn">Очікується</span>'}</td></tr>`).join('')
-            || `<tr><td colspan="4" class="muted" style="text-align:center;">Виплат ще не було</td></tr>`}
+          ${payouts.map(p=>`<tr>
+            <td>${fmtDate(p.createdAt)}</td>
+            <td>${fmtMoney(p.amount)}</td>
+            <td>${esc(p.note||'—')}</td>
+            <td>${p.receiptUrl?`<a href="${esc(p.receiptUrl)}" target="_blank" rel="noopener">📎 Переглянути</a>`:'—'}</td>
+          </tr>`).join('') || `<tr><td colspan="4" class="muted" style="text-align:center;">Виплат ще не було</td></tr>`}
         </tbody>
       </table></div>
     </div>
@@ -2899,6 +2939,8 @@ function openChatModal(otherId, opts={}){
       if(DB.conversationsMeta[otherId]) DB.conversationsMeta[otherId].unread = 0;
       const thread = $('#chatThread');
       if(thread){ thread.innerHTML = renderThread(); scrollDown(); }
+      // Оновлюємо бейдж у сайдбарі — модалка лежить окремо від #appRoot, тому не зникне
+      renderApp();
     }).catch(()=>{});
   }
 
@@ -3354,18 +3396,66 @@ function renderAdminTeachers(c){
   }).join('') || `<div class="empty-state"><div class="ei">🍎</div><p>Вчителів ще немає</p></div>`;
 }
 
-function openTeacherProfile(teacherId){
+async function openRecordPayoutModal(teacherId, suggestedAmount){
+  const t = getUserById(teacherId);
+  if(!t) return;
+  openModal(`
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-head"><h3>💰 Виплата вчителю</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:14px;">Вчитель: <b>${esc(t.name)}</b></p>
+        <div class="field"><label>Сума виплати (грн)</label><input type="number" id="payoutAmount" value="${suggestedAmount>0?Math.round(suggestedAmount):''}" placeholder="напр. 1750"></div>
+        <div class="field"><label>Коментар (необов'язково)</label><input id="payoutNote" placeholder="напр. Зарплата за 1-15 липня"></div>
+        <div class="field">
+          <label>Чек або скріншот переказу (необов'язково)</label>
+          <input type="file" id="payoutReceiptInput" accept="image/*,.pdf">
+          <p class="hint" id="payoutReceiptStatus">До 10 МБ</p>
+        </div>
+        <button class="btn btn-accent btn-block" id="payoutSubmitBtn">Підтвердити виплату</button>
+      </div>
+    </div>
+  `);
+  let receiptData = null;
+  $('#payoutReceiptInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 10*1024*1024){ toast('Файл завеликий (макс. 10 МБ)', 'error'); e.target.value=''; return; }
+    const reader = new FileReader();
+    reader.onloadend = ()=>{
+      receiptData = reader.result;
+      $('#payoutReceiptStatus').textContent = `✅ Прикріплено: ${file.name}`;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('#payoutSubmitBtn').onclick = async ()=>{
+    const amount = parseFloat($('#payoutAmount').value);
+    const note = $('#payoutNote').value.trim();
+    if(!amount || amount<=0){ toast('Вкажіть суму виплати', 'error'); return; }
+    const btn = $('#payoutSubmitBtn'); btn.disabled = true;
+    try {
+      await DataLayer.createPayout({teacherId, amount, note, receiptData});
+      toast('Виплату зафіксовано, вчителя повідомлено', 'success');
+      closeModal();
+      renderPageContent(STATE.currentPage);
+    } catch(e){
+      toast(e.message || 'Помилка', 'error');
+      btn.disabled = false;
+    }
+  };
+}
+
+async function openTeacherProfile(teacherId){
   const t = getUserById(teacherId);
   if(!t) return;
   const students = getStudentsOf(t.id);
   const lessons = DB.lessons.filter(l=>l.teacherId===t.id).sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
   const upcoming = lessons.filter(l=>l.status==='planned');
   const completed = lessons.filter(l=>l.status==='completed');
-  const totalPaid = (t.payouts||[]).filter(p=>p.status==='paid').reduce((a,b)=>a+b.amount,0);
-  const totalPending = (t.payouts||[]).filter(p=>p.status==='pending').reduce((a,b)=>a+b.amount,0);
-  // revenue brought to school = sum of payments made by his students
   const studentIds = students.map(s=>s.id);
   const revenueBrought = DB.payments.filter(p=>studentIds.includes(p.studentId)).reduce((a,b)=>a+b.amount,0);
+
+  let summary = {ratePerLesson:175, completedLessons:completed.length, totalEarned:0, totalPaid:0, balance:0};
+  try { summary = await DataLayer.getPayoutSummary(teacherId); } catch(e){}
 
   openModal(`
     <div class="modal-box wide" style="max-width:760px;">
@@ -3386,7 +3476,7 @@ function openTeacherProfile(teacherId){
         <div class="section-title" style="font-size:15px;">🎒 Учні вчителя</div>
         <div style="margin-bottom:18px;">
           ${students.map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;">
-            <span>${esc(s.name)} (${s.grade} кл.)</span><span class="muted">${s.plan?esc(s.plan.label):'без тарифу'}</span>
+            <span>${esc(s.name)} (${gradeLabel(s.grade)} кл.)</span><span class="muted">${s.plan?esc(s.plan.label):'без тарифу'}</span>
           </div>`).join('') || `<p class="muted">Учнів ще немає</p>`}
         </div>
 
@@ -3402,17 +3492,23 @@ function openTeacherProfile(teacherId){
           </tbody>
         </table></div>
 
-        <div class="section-title" style="font-size:15px;">💰 Фінанси вчителя</div>
-        <div class="grid grid-2" style="margin-bottom:18px;">
+        <div class="section-title" style="font-size:15px;">💰 Зарплата вчителя (${fmtMoney(summary.ratePerLesson)} за урок)</div>
+        <div class="grid grid-3" style="margin-bottom:18px;">
           <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-            <div class="muted">Виплачено</div><b style="color:var(--accent-dark);">${fmtMoney(totalPaid)}</b>
+            <div class="muted">Нараховано всього</div><b>${fmtMoney(summary.totalEarned)}</b>
           </div>
           <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
-            <div class="muted">Очікує виплати</div><b style="color:var(--warning);">${fmtMoney(totalPending)}</b>
+            <div class="muted">Виплачено</div><b style="color:var(--accent-dark);">${fmtMoney(summary.totalPaid)}</b>
+          </div>
+          <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+            <div class="muted">Залишок до сплати</div><b style="color:${summary.balance>0?'var(--warning)':'var(--accent-dark)'};">${fmtMoney(summary.balance)}</b>
           </div>
         </div>
 
-        <button class="btn btn-outline btn-block" onclick="closeModal(); openChatModal('${t.id}');">💬 Написати вчителю</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-accent" style="flex:1;" onclick="closeModal(); openRecordPayoutModal('${t.id}', ${summary.balance});">💰 Виплатити</button>
+          <button class="btn btn-outline" style="flex:1;" onclick="closeModal(); openChatModal('${t.id}');">💬 Написати вчителю</button>
+        </div>
       </div>
     </div>
   `);
@@ -3518,7 +3614,84 @@ async function deleteLesson(lessonId){
 }
 
 /* ---- Адмін: оплати з історією та чатом підтвердження ---- */
-/* ---- Адмін: заявки на пробний урок ---- */
+/* ---- Адмін: виплати вчителям ---- */
+async function renderAdminPayoutsPage(c){
+  const teachers = DB.users.filter(u=>u.role==='teacher');
+  c.innerHTML = `<div class="card"><p class="muted" style="text-align:center;padding:20px;">Завантаження…</p></div>`;
+
+  if(!teachers.length){
+    c.innerHTML = `<div class="empty-state"><div class="ei">🍎</div><p>Вчителів ще немає</p></div>`;
+    return;
+  }
+
+  const summaries = await Promise.all(teachers.map(async t=>{
+    try { return {teacher:t, summary: await DataLayer.getPayoutSummary(t.id)}; }
+    catch(e){ return {teacher:t, summary:{ratePerLesson:175, completedLessons:0, totalEarned:0, totalPaid:0, balance:0}}; }
+  }));
+
+  // Якщо сторінка вже перерендерилась (користувач пішов кудись ще) — не малюємо застарілі дані
+  if(STATE.currentPage!=='admin_payouts') return;
+
+  const totalOwed = summaries.reduce((a,s)=>a+Math.max(0,s.summary.balance), 0);
+
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:18px;">
+      <div class="stat-card" style="border:none;">
+        <div class="stat-ico" style="background:#FFF3E0;color:var(--warning);">💰</div>
+        <div><div class="stat-val">${fmtMoney(totalOwed)}</div><div class="stat-lbl">Загалом до виплати всім вчителям</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">🍎 Вчителі та їх заробіток</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Вчитель</th><th>Ставка</th><th>Проведено уроків</th><th>Нараховано</th><th>Виплачено</th><th>До сплати</th><th>Дії</th></tr></thead>
+        <tbody>
+          ${summaries.map(({teacher:t, summary:s})=>`
+            <tr>
+              <td><b>${esc(t.name)}</b></td>
+              <td>${fmtMoney(s.ratePerLesson)}</td>
+              <td>${s.completedLessons}</td>
+              <td>${fmtMoney(s.totalEarned)}</td>
+              <td>${fmtMoney(s.totalPaid)}</td>
+              <td>${s.balance>0?`<span class="badge badge-warn">${fmtMoney(s.balance)}</span>`:'<span class="badge badge-accent">0 грн</span>'}</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-accent" onclick="openRecordPayoutModal('${t.id}', ${s.balance})">💰 Виплатити</button>
+                  <button class="btn btn-sm btn-outline" onclick="openTeacherPayoutHistory('${t.id}')">📜 Історія</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table></div>
+    </div>
+  `;
+}
+
+async function openTeacherPayoutHistory(teacherId){
+  const t = getUserById(teacherId);
+  if(!t) return;
+  let payouts = [];
+  try { payouts = await DataLayer.getPayouts(teacherId); } catch(e){}
+  openModal(`
+    <div class="modal-box" style="max-width:480px;">
+      <div class="modal-head"><h3>📜 Історія виплат — ${esc(t.name)}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Сума</th><th>Коментар</th><th>Чек</th></tr></thead>
+          <tbody>
+            ${payouts.map(p=>`<tr>
+              <td>${fmtDate(p.createdAt)}</td>
+              <td>${fmtMoney(p.amount)}</td>
+              <td>${esc(p.note||'—')}</td>
+              <td>${p.receiptUrl?`<a href="${esc(p.receiptUrl)}" target="_blank" rel="noopener">📎</a>`:'—'}</td>
+            </tr>`).join('') || `<tr><td colspan="4" class="muted" style="text-align:center;">Виплат ще не було</td></tr>`}
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  `);
+}
 function renderAdminTrials(c){
   const requests = DB.trialRequests.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const statusBadge = (st)=> st==='confirmed' ? '<span class="badge badge-accent">Підтверджено</span>'
@@ -4849,6 +5022,9 @@ async function syncUserDataFromBackend(user) {
       // Адмін потрібен у списку контактів для повідомлень
       const admins = await API.getAdminContacts().catch(() => []);
       admins.forEach(a => { if (!DB.users.find(u => u.id === a.id)) DB.users.push(a); });
+      // Заробіток вчителя (без сум оплат учнів — лише свої нараховані/виплачені)
+      DB.payoutSummary = await API.getPayoutSummary().catch(() => null);
+      DB.payouts = await API.getPayouts().catch(() => []);
     } else if (user.role === 'parent') {
       const childrenResp = await API.getChildren().catch(() => []);
       DB.users = [user, ...(childrenResp || [])];
@@ -5109,6 +5285,21 @@ const DataLayer = {
     const r = (DB.trialRequests || []).find(x => x.id === id);
     if (r) Object.assign(r, payload);
     return r;
+  },
+  async getPayoutSummary(teacherId) {
+    if (API_MODE) return API.getPayoutSummary(teacherId);
+    return { ratePerLesson: 175, completedLessons: 0, totalEarned: 0, totalPaid: 0, balance: 0 };
+  },
+  async getPayouts(teacherId) {
+    if (API_MODE) return API.getPayouts(teacherId);
+    return [];
+  },
+  async createPayout(payload) {
+    if (API_MODE) return API.createPayout(payload);
+    return { payout: { id: uid(), ...payload, createdAt: new Date().toISOString() } };
+  },
+  async deletePayout(id) {
+    if (API_MODE) return API.deletePayout(id);
   },
 };
 

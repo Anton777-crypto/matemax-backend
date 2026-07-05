@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const { initDB } = require('./db');
@@ -39,8 +41,33 @@ app.use(cors({
 }));
 
 // ── Middleware ────────────────────────────────────────────────
+app.use(helmet({
+  // crossOriginResourcePolicy вимкнено, щоб не блокувати завантажені файли (uploads) з фронтенду
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(express.json({ limit: '20mb' }));   // 20MB — для base64 аудіо/зображень
 app.use(express.urlencoded({ extended: true }));
+
+// ── Обмеження частоти запитів (захист від перебору паролів/DDoS) ─
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 хвилин
+  max: 300,                  // максимум 300 запитів на IP за вікно — з запасом для звичайної роботи
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Забагато запитів, спробуйте пізніше' },
+});
+app.use('/api', apiLimiter);
+
+// Суворіший ліміт саме на вхід/реєстрацію — захист від перебору паролів
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // 20 спроб входу/реєстрації за 15 хв з одного IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Забагато спроб входу. Спробуйте через 15 хвилин.' },
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // ── Статичні файли ────────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
