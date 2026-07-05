@@ -104,6 +104,13 @@ router.patch('/:id', auth, (req, res) => {
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
+    // Захист від передчасного/помилкового нарахування оплати:
+    // вчитель НЕ може напряму позначити урок як "completed" — лише як
+    // "pending_confirmation", остаточне підтвердження робить тільки адмін.
+    if (req.body.status === 'completed' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Тільки адміністратор може підтвердити проведення уроку' });
+    }
+
     const allowed = ['subject', 'date', 'time', 'meet_url', 'meetUrl', 'status', 'notes', 'trial'];
     const fieldMap = { meetUrl: 'meet_url' };
     const updates = [];
@@ -123,13 +130,37 @@ router.patch('/:id', auth, (req, res) => {
 
     const updated = db.prepare('SELECT * FROM lessons WHERE id = ?').get(req.params.id);
 
-    // Якщо урок позначено як завершений — сповіщаємо учня/батька
+    // Вчитель позначив урок проведеним — просимо адміна підтвердити
+    if (req.body.status === 'pending_confirmation') {
+      const teacher = db.prepare('SELECT name FROM users WHERE id = ?').get(lesson.teacher_id);
+      const student = db.prepare('SELECT name FROM users WHERE id = ?').get(lesson.student_id);
+      const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+      admins.forEach(a => addNotification(
+        a.id,
+        `${teacher?.name || 'Вчитель'} позначив урок з «${student?.name || 'учнем'}» проведеним — потрібне підтвердження`,
+        'lesson_confirm'
+      ));
+    }
+
+    // Адмін підтвердив урок як проведений — сповіщаємо учня/батька і вчителя
     if (req.body.status === 'completed') {
       notifyStudentOrParent(db, lesson.student_id, `Урок ${updated.date} завершено ✅`, 'lesson');
+      if (req.user.id !== lesson.teacher_id) {
+        addNotification(lesson.teacher_id, `Адміністратор підтвердив проведення уроку ${updated.date} — оплату нараховано`, 'lesson');
+      }
+    }
+
+    // Адмін відхилив запит на підтвердження — повернув у "заплановано"
+    if (req.body.status === 'planned' && lesson.status === 'pending_confirmation' && req.user.role === 'admin') {
+      addNotification(
+        lesson.teacher_id,
+        `Адміністратор не підтвердив проведення уроку ${lesson.date} о ${lesson.time}.${req.body.notes ? ' Причина: ' + req.body.notes : ''}`,
+        'lesson'
+      );
     }
 
     // Якщо зміни (дата/час/статус) вносить не сам вчитель (тобто адмін) — сповіщаємо вчителя
-    const scheduleChanged = ['date', 'time', 'status'].some(k => req.body[k] !== undefined);
+    const scheduleChanged = ['date', 'time'].some(k => req.body[k] !== undefined);
     if (scheduleChanged && req.user.id !== lesson.teacher_id) {
       addNotification(lesson.teacher_id, `Адміністратор оновив урок: ${updated.date} о ${updated.time}`, 'lesson');
     }

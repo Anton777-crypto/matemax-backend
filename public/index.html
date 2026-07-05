@@ -1238,15 +1238,18 @@ function renderApp(){
   const unreadTotal = unreadCountFor(user.id);
   const newStudentCount = user.role==='admin' ? DB.notifications.filter(n=>n.userId===user.id && n.type==='new_student' && !n.read).length : 0;
   const pendingTrialCount = user.role==='admin' ? DB.trialRequests.filter(r=>r.status==='pending').length : 0;
+  const pendingLessonCount = user.role==='admin' ? DB.lessons.filter(l=>l.status==='pending_confirmation').length : 0;
   nav.forEach(item=>{
     const showBadge = (item.id==='messages' || item.id==='messages_teacher' || item.id==='admin_messages') && unreadTotal>0;
     const showStudentBadge = item.id==='admin_students' && newStudentCount>0;
     const showTrialBadge = item.id==='admin_trials' && pendingTrialCount>0;
+    const showLessonBadge = item.id==='admin_schedule' && pendingLessonCount>0;
     const it = el(`<div class="nav-item" data-page="${item.id}" style="position:relative;">
       <span class="nav-ico">${item.icon}</span>${item.label}
       ${showBadge ? `<span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${unreadTotal}</span>` : ''}
       ${showStudentBadge ? `<span style="margin-left:auto;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${newStudentCount}</span>` : ''}
       ${showTrialBadge ? `<span style="margin-left:auto;background:var(--accent);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${pendingTrialCount}</span>` : ''}
+      ${showLessonBadge ? `<span style="margin-left:auto;background:var(--warning);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;">${pendingLessonCount}</span>` : ''}
     </div>`);
     it.onclick = ()=>{ STATE.currentPage = item.id; renderApp(); };
     navEl.appendChild(it);
@@ -1398,6 +1401,7 @@ function renderScheduleView(c, lessons, opts={}){
             ${dayLessons.length ? dayLessons.map(l=>`
               <div class="sched-lesson ${l.status==='completed'?'done':''}">
                 <b>${l.time}</b>${esc(l.subject)}
+                ${l.status==='pending_confirmation'?'<div style="font-size:10.5px;color:var(--warning);margin-top:3px;">⏳ Очікує підтвердження</div>':''}
                 ${opts.showJoin && l.status==='planned' ? `<a href="${l.meetUrl}" target="_blank" style="display:block;margin-top:5px;color:var(--accent-dark);font-weight:700;">📹 Meet</a>` : ''}
               </div>
             `).join('') : `<p class="muted" style="text-align:center;font-size:11.5px;">—</p>`}
@@ -1410,18 +1414,21 @@ function renderScheduleView(c, lessons, opts={}){
       <div class="table-wrap"><table>
         <thead><tr><th>Дата</th><th>Час</th><th>Тема</th><th>Статус</th><th></th></tr></thead>
         <tbody>
-          ${lessons.map(l=>`
-            <tr>
+          ${lessons.map(l=>{
+            const statusBadge = l.status==='completed' ? '<span class="badge badge-accent">Проведено</span>'
+              : l.status==='pending_confirmation' ? '<span class="badge badge-warn">Очікує підтвердження</span>'
+              : '<span class="badge">Заплановано</span>';
+            return `<tr>
               <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${esc(l.subject)}</td>
-              <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
+              <td>${statusBadge}</td>
               <td>
                 <div style="display:flex;gap:6px;">
                   ${l.status==='planned' && l.meetUrl?`<a href="${l.meetUrl}" target="_blank" class="btn btn-sm btn-outline">📹 Meet</a>`:''}
                   ${opts.showComplete && l.status==='planned' ? `<button class="btn btn-sm btn-accent" onclick="markLessonCompleteUI('${l.id}')">✅ Проведено</button>` : ''}
                 </div>
               </td>
-            </tr>
-          `).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Немає уроків</td></tr>`}
+            </tr>`;
+          }).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;">Немає уроків</td></tr>`}
         </tbody>
       </table></div>
     </div>
@@ -2326,15 +2333,10 @@ function renderTeacherSchedule(c){
 }
 
 async function markLessonCompleteUI(lessonId){
-  if(!confirm('Позначити урок проведеним? Це нарахує вам оплату за урок.')) return;
+  if(!confirm('Позначити урок проведеним? Оплата нарахується лише після підтвердження адміністратором.')) return;
   try {
-    await DataLayer.completeLesson(lessonId);
-    toast('Урок позначено проведеним ✅', 'success');
-    // Оновлюємо дані про заробіток одразу
-    if(API_MODE){
-      DB.payoutSummary = await API.getPayoutSummary().catch(()=>DB.payoutSummary);
-      DB.payouts = await API.getPayouts().catch(()=>DB.payouts);
-    }
+    await DataLayer.editLesson(lessonId, {status:'pending_confirmation'});
+    toast('Запит надіслано адміністратору на підтвердження ⏳', 'success');
     renderPageContent(STATE.currentPage);
   } catch(e){
     toast(e.message || 'Помилка', 'error');
@@ -3519,7 +3521,33 @@ function renderAdminSchedule(c){
   const teachers = DB.users.filter(u=>u.role==='teacher');
   const students = DB.users.filter(u=>u.role==='student');
   const lessons = DB.lessons.slice().sort((a,b)=>new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time));
+  const pending = lessons.filter(l=>l.status==='pending_confirmation');
+
   c.innerHTML = `
+    ${pending.length ? `
+    <div class="card" style="margin-bottom:18px;border:1.5px solid var(--warning);">
+      <div class="section-title" style="color:var(--warning);">⏳ Очікують підтвердження (${pending.length})</div>
+      <p class="muted" style="margin-bottom:12px;">Вчитель позначив ці уроки проведеними. Підтвердьте, щоб нарахувати оплату, або відхиліть, якщо урок не відбувся.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Час</th><th>Вчитель</th><th>Учень</th><th>Тема</th><th>Дії</th></tr></thead>
+        <tbody>
+          ${pending.map(l=>{
+            const st = getUserById(l.studentId), t = getUserById(l.teacherId);
+            return `<tr>
+              <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${t?esc(t.name):'—'}</td><td>${st?esc(st.name):'—'}</td>
+              <td>${esc(l.subject)}</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-accent" onclick="confirmLessonUI('${l.id}')">✅ Підтвердити</button>
+                  <button class="btn btn-sm btn-danger" onclick="rejectLessonUI('${l.id}')">❌ Відхилити</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>` : ''}
+
     <div class="card" style="margin-bottom:18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
         <div class="section-title" style="margin-bottom:0;">📅 Управління розкладом</div>
@@ -3530,10 +3558,13 @@ function renderAdminSchedule(c){
         <tbody>
           ${lessons.map(l=>{
             const st = getUserById(l.studentId), t = getUserById(l.teacherId);
+            const statusBadge = l.status==='completed' ? '<span class="badge badge-accent">Проведено</span>'
+              : l.status==='pending_confirmation' ? '<span class="badge badge-warn">Очікує підтвердження</span>'
+              : '<span class="badge">Заплановано</span>';
             return `<tr>
               <td>${fmtDate(l.date)}</td><td>${l.time}</td><td>${t?esc(t.name):'—'}</td><td>${st?esc(st.name):'—'}</td>
               <td>${esc(l.subject)}</td>
-              <td>${l.status==='completed'?'<span class="badge badge-accent">Проведено</span>':'<span class="badge">Заплановано</span>'}</td>
+              <td>${statusBadge}</td>
               <td>
                 <div style="display:flex;gap:6px;">
                   <button class="btn btn-sm btn-outline" onclick="openEditLessonModal('${l.id}')">✏️</button>
@@ -3547,6 +3578,27 @@ function renderAdminSchedule(c){
     </div>
   `;
   $('#adminAddLessonBtn').onclick = ()=>openEditLessonModal(null);
+}
+
+async function confirmLessonUI(lessonId){
+  try {
+    await DataLayer.editLesson(lessonId, {status:'completed'});
+    toast('Урок підтверджено, оплату нараховано вчителю ✅', 'success');
+    renderPageContent('admin_schedule');
+  } catch(e){
+    toast(e.message || 'Помилка', 'error');
+  }
+}
+
+async function rejectLessonUI(lessonId){
+  const reason = prompt('Причина відхилення (необов\'язково, побачить вчитель):', '') || '';
+  try {
+    await DataLayer.editLesson(lessonId, {status:'planned', notes:reason});
+    toast('Урок повернуто в заплановані', 'info');
+    renderPageContent('admin_schedule');
+  } catch(e){
+    toast(e.message || 'Помилка', 'error');
+  }
 }
 
 function openEditLessonModal(lessonId){
