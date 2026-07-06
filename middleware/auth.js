@@ -1,6 +1,15 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'matemax_secret_change_in_production_2024';
+// КРИТИЧНО: жодного запасного значення "за замовчуванням" тут бути не повинно —
+// якщо хтось дізнається таку заглушку (наприклад, побачивши код на GitHub),
+// він зможе підробити токен адміністратора. Тому сервер просто відмовляється
+// запускатись, якщо змінна не задана явно в Railway → Variables.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ КРИТИЧНА ПОМИЛКА: змінна оточення JWT_SECRET не задана. Сервер не може запуститись небезпечно.');
+  console.error('   Задайте JWT_SECRET у Railway → Variables (довгий випадковий рядок) і передеплойте.');
+  process.exit(1);
+}
 
 function auth(req, res, next) {
   const header = req.headers.authorization;

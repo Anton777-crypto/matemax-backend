@@ -116,14 +116,21 @@ router.patch('/:id', auth, async (req, res) => {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'Користувача не знайдено' });
 
+    const isSelf = req.user.id === user.id;
+    const isAdmin = req.user.role === 'admin';
+
     // Дозволено: сам юзер або адмін
-    if (req.user.id !== user.id && req.user.role !== 'admin') {
+    if (!isSelf && !isAdmin) {
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
-    const allowed = ['name', 'phone', 'bio', 'subjects', 'teacher_id', 'balance', 'trial_used'];
-    // Адмін може змінювати баланс і роль
-    if (req.user.role === 'admin') allowed.push('role', 'email_verified');
+    // Безпечні поля, які юзер може редагувати у себе сам (не впливають на гроші/доступи)
+    const selfAllowed = ['name', 'phone', 'bio', 'subjects'];
+    // Чутливі поля (баланс, вчитель, роль, підтвердження email) — лише адмін,
+    // навіть якщо це "свій" акаунт. Інакше будь-хто міг би сам собі накрутити баланс.
+    const adminOnlyAllowed = ['teacher_id', 'balance', 'trial_used', 'role', 'email_verified'];
+
+    const allowed = isAdmin ? [...selfAllowed, ...adminOnlyAllowed] : selfAllowed;
 
     const updates = [];
     const vals = [];
@@ -133,12 +140,14 @@ router.patch('/:id', auth, async (req, res) => {
         vals.push(req.body[key]);
       }
     }
-    // Також підтримуємо camelCase з фронтенду
-    const camelToSnake = { teacherId: 'teacher_id', trialUsed: 'trial_used', emailVerified: 'email_verified' };
-    for (const [camel, snake] of Object.entries(camelToSnake)) {
-      if (req.body[camel] !== undefined && !vals.includes(req.body[camel])) {
-        updates.push(`${snake} = ?`);
-        vals.push(req.body[camel]);
+    // Також підтримуємо camelCase з фронтенду (лише для адміна — ті самі чутливі поля)
+    if (isAdmin) {
+      const camelToSnake = { teacherId: 'teacher_id', trialUsed: 'trial_used', emailVerified: 'email_verified' };
+      for (const [camel, snake] of Object.entries(camelToSnake)) {
+        if (req.body[camel] !== undefined && !vals.includes(req.body[camel])) {
+          updates.push(`${snake} = ?`);
+          vals.push(req.body[camel]);
+        }
       }
     }
 

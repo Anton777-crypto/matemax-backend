@@ -107,8 +107,10 @@ router.post('/', auth, (req, res) => {
 
     // Якщо викладача не передали — беремо закріпленого за учнем, інакше самого учня
     // (щоб не порушити NOT NULL у колонці teacher_id)
-    let effTeacherId = teacherId;
-    if (!effTeacherId) {
+    // Примітка безпеки: teacherId НІКОЛИ не береться від клієнта напряму — лише
+    // з бази, інакше будь-хто міг би підставити чужий/вигаданий ID вчителя.
+    let effTeacherId;
+    {
       const studentRow = db.prepare('SELECT teacher_id FROM users WHERE id = ?').get(effStudentId);
       effTeacherId = (studentRow && studentRow.teacher_id) || effStudentId;
     }
@@ -148,8 +150,8 @@ router.post('/', auth, (req, res) => {
 });
 
 // ── PATCH /api/payments/:id ───────────────────────────────────
-// Адмін (або викладач) підтверджує чи відхиляє оплату, з коментарем.
-router.patch('/:id', auth, teacherOrAdmin, (req, res) => {
+// Тільки адмін підтверджує чи відхиляє оплату, з коментарем.
+router.patch('/:id', auth, adminOnly, (req, res) => {
   try {
     const db = getDB();
     const payment = db.prepare('SELECT * FROM payments WHERE id = ?').get(req.params.id);
