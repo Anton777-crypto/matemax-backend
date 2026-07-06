@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
 
-const MATERIALS_DIR = path.join(__dirname, '..', 'uploads', 'materials');
+const MATERIALS_DIR = path.join(process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads'), 'materials');
 if (!fs.existsSync(MATERIALS_DIR)) fs.mkdirSync(MATERIALS_DIR, { recursive: true });
 
 // Приймає data URL (напр. "data:application/pdf;base64,...."), зберігає файл на диск

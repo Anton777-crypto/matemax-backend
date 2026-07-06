@@ -7,7 +7,7 @@ const { getDB } = require('../db');
 const { auth, teacherOrAdmin } = require('../middleware/auth');
 const { addNotification, getChildIds } = require('../utils');
 
-const HOMEWORK_DIR = path.join(__dirname, '..', 'uploads', 'homework');
+const HOMEWORK_DIR = path.join(process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads'), 'homework');
 if (!fs.existsSync(HOMEWORK_DIR)) fs.mkdirSync(HOMEWORK_DIR, { recursive: true });
 
 function saveHomeworkFile(dataUrl) {

@@ -7,7 +7,7 @@ const { getDB } = require('../db');
 const { auth, adminOnly } = require('../middleware/auth');
 const { addNotification } = require('../utils');
 
-const PAYOUTS_DIR = path.join(__dirname, '..', 'uploads', 'payouts');
+const PAYOUTS_DIR = path.join(process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads'), 'payouts');
 if (!fs.existsSync(PAYOUTS_DIR)) fs.mkdirSync(PAYOUTS_DIR, { recursive: true });
 
 function saveReceiptFromDataUrl(dataUrl) {

@@ -8,7 +8,7 @@ const { auth, teacherOrAdmin, adminOnly } = require('../middleware/auth');
 const { addNotification, getChildIds } = require('../utils');
 
 const ALLOWED_CURRENCIES = ['UAH', 'EUR', 'USD'];
-const RECEIPTS_DIR = path.join(__dirname, '..', 'uploads', 'receipts');
+const RECEIPTS_DIR = path.join(process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads'), 'receipts');
 if (!fs.existsSync(RECEIPTS_DIR)) fs.mkdirSync(RECEIPTS_DIR, { recursive: true });
 
 // Приймає data URL (напр. "data:image/png;base64,...."), зберігає файл на диск
