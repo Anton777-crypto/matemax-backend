@@ -13,20 +13,18 @@ router.get('/conversations', auth, (req, res) => {
 
     // Знаходимо всіх, з ким є листування
     const rows = db.prepare(`
-      SELECT DISTINCT
-        CASE WHEN from_id = ? THEN to_id ELSE from_id END AS other_id,
-        MAX(date) as last_date,
-        (SELECT text FROM messages m2
-          WHERE (m2.from_id = ? AND m2.to_id = other_id)
-             OR (m2.from_id = other_id AND m2.to_id = ?)
-          ORDER BY m2.date DESC LIMIT 1) as last_text,
-        (SELECT COUNT(*) FROM messages m3
-          WHERE m3.from_id = other_id AND m3.to_id = ? AND m3.read = 0) as unread
-      FROM messages
-      WHERE from_id = ? OR to_id = ?
+      WITH conv AS (
+        SELECT CASE WHEN from_id = ? THEN to_id ELSE from_id END AS other_id, date, text, read, from_id, to_id
+        FROM messages
+        WHERE from_id = ? OR to_id = ?
+      )
+      SELECT other_id, MAX(date) as last_date,
+        (SELECT text FROM conv c2 WHERE c2.other_id = conv.other_id ORDER BY c2.date DESC LIMIT 1) as last_text,
+        (SELECT COUNT(*) FROM messages m3 WHERE m3.from_id = conv.other_id AND m3.to_id = ? AND m3.read = 0) as unread
+      FROM conv
       GROUP BY other_id
       ORDER BY last_date DESC
-    `).all(me, me, me, me, me, me);
+    `).all(me, me, me, me);
 
     // Підтягуємо дані про співрозмовників
     const conversations = rows.map(row => {

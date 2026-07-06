@@ -21,6 +21,9 @@ const notificationRoutes = require('./routes/notifications');
 const gameRoutes       = require('./routes/games');
 
 const app = express();
+// Railway (як і будь-який PaaS) працює через reverse proxy — без цього express-rate-limit
+// не може коректно визначити реальну IP-адресу користувача з заголовка X-Forwarded-For.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 // ── CORS ──────────────────────────────────────────────────────
