@@ -200,6 +200,7 @@ function initDB() {
   ensureUserColumn('activation_status', "TEXT DEFAULT 'active'");
   ensureUserColumn('grade', 'TEXT');
   ensureUserColumn('rate_per_lesson', 'REAL DEFAULT 175');
+  ensureUserColumn('consent_given_at', 'TEXT');
 
   // ── Міграція: чек/примітка для payouts, якщо їх ще немає ──────
   const payoutCols = db.prepare('PRAGMA table_info(payouts)').all().map(c => c.name);

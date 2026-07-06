@@ -51,4 +51,15 @@ router.patch('/read-type/:type', auth, (req, res) => {
   }
 });
 
+// ── PATCH /api/notifications/:id/read ──────────────────────────
+router.patch('/:id/read', auth, (req, res) => {
+  try {
+    const db = getDB();
+    db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+    res.json({ message: 'Позначено як прочитане' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

@@ -12,12 +12,15 @@ const FRONTEND_URL = () => process.env.FRONTEND_URL || 'http://localhost:3001';
 // ── POST /api/auth/register ───────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role = 'student', phone } = req.body;
+    const { email, password, name, role = 'student', phone, consent } = req.body;
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Заповніть усі обов\'язкові поля' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Пароль — мінімум 6 символів' });
+    }
+    if (!consent) {
+      return res.status(400).json({ error: 'Потрібна згода на обробку персональних даних' });
     }
     const allowedRoles = ['teacher', 'parent'];
     if (!allowedRoles.includes(role)) {
@@ -33,8 +36,8 @@ router.post('/register', async (req, res) => {
     const verify_token = uuidv4();
 
     db.prepare(`
-      INSERT INTO users (id, email, password_hash, name, role, phone, verify_token, email_verified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password_hash, name, role, phone, verify_token, email_verified, consent_given_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).run(id, email.toLowerCase().trim(), password_hash, name.trim(), role, phone || null, verify_token,
       // Якщо жодного email-сервісу не налаштовано — верифікуємо одразу (для розробки)
       isEmailConfigured() ? 0 : 1

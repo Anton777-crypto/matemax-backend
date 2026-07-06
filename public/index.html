@@ -142,6 +142,20 @@ img{max-width:100%;display:block;}
 }
 .topbar h1{font-size:21px;font-weight:800;}
 .topbar-right{display:flex;align-items:center;gap:14px;}
+#notifBellBadge{
+  position:absolute;top:0;right:0;background:var(--danger);color:#fff;font-size:10px;font-weight:800;
+  min-width:16px;height:16px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 3px;
+}
+#notifBellBadge.show{display:flex;}
+.notif-panel{
+  position:absolute;top:56px;right:24px;width:340px;max-height:420px;overflow-y:auto;
+  background:#fff;border-radius:14px;box-shadow:var(--shadow-lg);z-index:200;border:1px solid var(--border);
+}
+.notif-panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);}
+.notif-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13.5px;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item.unread{background:#F5F3FF;}
+.notif-item .notif-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);margin-right:6px;}
 .menu-toggle{display:none;background:var(--bg);width:40px;height:40px;border-radius:10px;font-size:18px;align-items:center;justify-content:center;}
 
 .page-content{padding:28px 32px 60px;flex:1;}
@@ -725,6 +739,9 @@ const API = {
   async markNotificationsReadByType(type) {
     return apiFetch('/notifications/read-type/' + type, { method: 'PATCH' });
   },
+  async markNotificationRead(id) {
+    return apiFetch('/notifications/' + id + '/read', { method: 'PATCH' });
+  },
 
   // Games
   async getGameProgress(studentId) {
@@ -884,6 +901,69 @@ function getChildrenOf(parentId){
 }
 
 /* ---------------------------- AUTH ---------------------------- */
+// ====================================================================
+// ЮРИДИЧНІ ДОКУМЕНТИ — Політика конфіденційності та Згода на обробку ПД
+// Це базовий шаблон, підготовлений для запуску платформи. Рекомендується
+// показати юристу перед активним публічним використанням.
+// ====================================================================
+const PRIVACY_POLICY_TEXT = `
+<p><b>Останнє оновлення: липень 2026</b></p>
+<p>Ця Політика конфіденційності описує, як онлайн-школа «МатеМакс» (далі — «Школа», «ми») збирає, використовує та захищає персональні дані користувачів платформи matemax.store.</p>
+
+<p><b>1. Які дані ми збираємо</b></p>
+<p>Від батьків/опікунів: ім'я, email, номер телефону.<br>
+Про дитину: ім'я, клас, напрямок навчання, навчальний прогрес (оцінки, виконані домашні завдання, результати ігор).<br>
+Від вчителів: ім'я, email, телефон.<br>
+Платіжна інформація: скріншот/квитанція про оплату для підтвердження платежу. Ми <b>не зберігаємо</b> дані банківських карток.</p>
+
+<p><b>2. Навіщо ми обробляємо ці дані</b></p>
+<p>Для надання освітніх послуг (уроки, домашні завдання, ігри), для зв'язку з батьками щодо навчання дитини, для підтвердження та обліку оплат, для виплати винагороди вчителям.</p>
+
+<p><b>3. Хто має доступ до даних</b></p>
+<p>Адміністрація Школи має доступ до всіх даних, необхідних для роботи платформи. Вчитель бачить лише навчальні дані своїх учнів (розклад, домашні завдання, прогрес) — <b>вчитель не бачить суми оплат учнів</b>. Спілкування між учасниками платформи відбувається виключно через адміністрацію.</p>
+
+<p><b>4. Де і як довго зберігаються дані</b></p>
+<p>Дані зберігаються на серверах хостинг-провайдера Railway. Дані зберігаються протягом усього часу користування платформою та можуть бути видалені на запит користувача (див. п.6).</p>
+
+<p><b>5. Передача третім особам</b></p>
+<p>Ми не продаємо та не передаємо персональні дані третім особам для маркетингових цілей. Дані можуть оброблятися технічними підрядниками виключно для забезпечення роботи платформи (хостинг, надсилання email-повідомлень).</p>
+
+<p><b>6. Ваші права</b></p>
+<p>Ви маєте право: отримати копію своїх даних та даних дитини; вимагати виправлення неточних даних; вимагати видалення акаунту та пов'язаних даних; відкликати згоду на обробку даних у будь-який момент.<br>
+Для реалізації цих прав звертайтесь до адміністрації Школи через розділ «Повідомлення» на платформі.</p>
+
+<p><b>7. Безпека</b></p>
+<p>Паролі зберігаються у зашифрованому вигляді. Доступ до платформи захищений автентифікацією. Ми вживаємо розумних технічних заходів для захисту даних, проте не можемо гарантувати абсолютну безпеку будь-якої системи, підключеної до інтернету.</p>
+
+<p><b>8. Контакти</b></p>
+<p>Питання щодо цієї Політики — через розділ «Повідомлення» на платформі після реєстрації, або за контактами адміністрації, вказаними на сайті.</p>
+`;
+
+const CONSENT_TEXT = `
+<p><b>Згода на обробку персональних даних</b></p>
+<p>Реєструючись на платформі «МатеМакс» (matemax.store), я підтверджую, що:</p>
+<ul style="padding-left:20px;line-height:1.8;">
+  <li>Я ознайомлений(а) з <b>Політикою конфіденційності</b> Школи;</li>
+  <li>Я даю згоду на обробку моїх персональних даних (ім'я, email, телефон) з метою надання освітніх послуг та зв'язку щодо навчання;</li>
+  <li>Якщо я реєструюсь як батько/опікун — я є законним представником дитини (дітей), яку(их) додаю на платформу, і даю згоду на обробку персональних даних дитини (ім'я, клас, навчальний прогрес) виключно з метою організації її навчання математики на платформі;</li>
+  <li>Я розумію, що можу відкликати цю згоду та вимагати видалення даних у будь-який момент, звернувшись до адміністрації Школи;</li>
+  <li>Обробка персональних даних здійснюється відповідно до Закону України «Про захист персональних даних».</li>
+</ul>
+`;
+
+function openLegalDocModal(type){
+  const title = type==='privacy' ? '📄 Політика конфіденційності' : '✅ Згода на обробку персональних даних';
+  const content = type==='privacy' ? PRIVACY_POLICY_TEXT : CONSENT_TEXT;
+  openModal(`
+    <div class="modal-box" style="max-width:600px;">
+      <div class="modal-head"><h3>${title}</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
+      <div class="modal-body" style="max-height:60vh;overflow-y:auto;font-size:13.5px;line-height:1.6;">
+        ${content}
+      </div>
+    </div>
+  `);
+}
+
 const ROLE_META = {
   student: {label:'Учень', icon:'🎒'},
   parent:  {label:'Батьки', icon:'👨‍👩‍👧'},
@@ -998,6 +1078,12 @@ function renderRegisterForm(){
       <label>Пароль</label>
       <input type="password" id="regPass" placeholder="Мінімум 6 символів">
     </div>
+    <div class="field" style="display:flex;align-items:flex-start;gap:10px;">
+      <input type="checkbox" id="regConsent" style="width:18px;height:18px;flex-shrink:0;margin-top:2px;padding:0;accent-color:var(--primary);">
+      <label for="regConsent" style="font-weight:400;font-size:12.5px;line-height:1.5;margin-bottom:0;">
+        Я ознайомлений(а) з <span style="color:var(--primary);text-decoration:underline;cursor:pointer;" onclick="event.preventDefault();openLegalDocModal('privacy')">Політикою конфіденційності</span> і даю <span style="color:var(--primary);text-decoration:underline;cursor:pointer;" onclick="event.preventDefault();openLegalDocModal('consent')">згоду на обробку персональних даних</span>${role==='parent' ? ' — своїх та моєї дитини' : ''}
+      </label>
+    </div>
     <button class="btn btn-primary btn-block" id="registerBtn">Зареєструватися →</button>
     <p class="auth-foot-link">Вже є акаунт? <b id="goLogin">Увійти</b></p>
   `;
@@ -1015,12 +1101,13 @@ async function startRegistration(){
   const pass = $('#regPass').value;
   if(!name || !email || pass.length<6){ toast('Заповніть усі поля. Пароль — мінімум 6 символів', 'error'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('Введіть коректний email', 'error'); return; }
+  if(!$('#regConsent').checked){ toast('Потрібно погодитись з обробкою персональних даних, щоб продовжити', 'error'); return; }
 
   if(API_MODE){
     const btn = $('#registerBtn');
     if(btn){ btn.disabled = true; btn.textContent = 'Реєстрація...'; }
     try {
-      const result = await API.register({ role, name, email, password: pass });
+      const result = await API.register({ role, name, email, password: pass, consent: true });
       if(result.token && result.user){
         // Бекенд у dev-режимі (EMAIL_HOST не налаштовано) — акаунт вже підтверджено, одразу входимо
         TokenStore.set(result.token);
@@ -1229,6 +1316,10 @@ function renderApp(){
             <h1 id="pageTitle"></h1>
           </div>
           <div class="topbar-right">
+            <div id="notifBellBtn" style="position:relative;cursor:pointer;font-size:20px;padding:6px;" title="Сповіщення">
+              🔔
+              <span id="notifBellBadge"></span>
+            </div>
             <span class="badge">${todayLabel()}</span>
           </div>
         </div>
@@ -1267,6 +1358,8 @@ function renderApp(){
   };
   $('#menuToggle').onclick = ()=>toggleSidebar();
   $('#sidebarOverlay').onclick = ()=>toggleSidebar(true);
+  updateNotifBellBadge();
+  $('#notifBellBtn').onclick = (e)=>{ e.stopPropagation(); toggleNotifPanel(); };
 
   setActivePage(user.role);
 }
@@ -2851,6 +2944,85 @@ function getConversation(userA, userB){
   return DB.messages.filter(m=>(m.fromId===userA && m.toId===userB) || (m.fromId===userB && m.toId===userA))
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
+function timeAgo(dateStr){
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs/60000);
+  if(mins < 1) return 'щойно';
+  if(mins < 60) return `${mins} хв тому`;
+  const hours = Math.floor(mins/60);
+  if(hours < 24) return `${hours} год тому`;
+  const days = Math.floor(hours/24);
+  if(days < 7) return `${days} дн тому`;
+  return fmtDate(dateStr);
+}
+
+function updateNotifBellBadge(){
+  const badge = $('#notifBellBadge');
+  if(!badge) return;
+  const u = STATE.currentUser;
+  const count = DB.notifications.filter(n=>n.userId===u.id && !n.read).length;
+  badge.textContent = count>9 ? '9+' : (count||'');
+  badge.classList.toggle('show', count>0);
+}
+
+function toggleNotifPanel(){
+  const existing = $('#notifPanel');
+  if(existing){ existing.remove(); return; }
+  renderNotifPanel();
+  // Закриваємо панель при кліку деінде
+  setTimeout(()=>{
+    document.addEventListener('click', function closeOnce(e){
+      const panel = $('#notifPanel');
+      if(panel && !panel.contains(e.target)){
+        panel.remove();
+        document.removeEventListener('click', closeOnce);
+      }
+    });
+  }, 0);
+}
+
+function renderNotifPanel(){
+  const u = STATE.currentUser;
+  const list = DB.notifications.filter(n=>n.userId===u.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
+  const panel = el(`
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-head">
+        <b style="font-size:14px;">Сповіщення</b>
+        <span style="color:var(--primary);font-size:12.5px;cursor:pointer;" id="markAllNotifsBtn">Позначити всі прочитаними</span>
+      </div>
+      <div id="notifList">
+        ${list.map(n=>`
+          <div class="notif-item ${n.read?'':'unread'}" data-id="${n.id}">
+            ${!n.read?'<span class="notif-dot"></span>':''}${esc(n.text)}
+            <div class="muted" style="font-size:11px;margin-top:4px;">${timeAgo(n.date)}</div>
+          </div>
+        `).join('') || `<div class="muted" style="padding:20px;text-align:center;">Немає сповіщень</div>`}
+      </div>
+    </div>
+  `);
+  document.body.appendChild(panel);
+  panel.querySelectorAll('.notif-item').forEach(item=>{
+    item.onclick = async ()=>{
+      const id = item.dataset.id;
+      const n = DB.notifications.find(x=>x.id===id);
+      if(n && !n.read){
+        n.read = true;
+        item.classList.remove('unread');
+        const dot = item.querySelector('.notif-dot'); if(dot) dot.remove();
+        updateNotifBellBadge();
+        if(API_MODE) API.markNotificationRead(id).catch(()=>{});
+      }
+    };
+  });
+  $('#markAllNotifsBtn').onclick = async (e)=>{
+    e.stopPropagation();
+    DB.notifications.forEach(n=>{ if(n.userId===u.id) n.read = true; });
+    updateNotifBellBadge();
+    panel.remove();
+    if(API_MODE) API.markNotificationsRead().catch(()=>{});
+  };
+}
+
 function unreadCountFor(userId, fromId){
   const isMe = STATE.currentUser && STATE.currentUser.id===userId;
   if(isMe && DB.conversationsMeta && Object.keys(DB.conversationsMeta).length){
@@ -3026,10 +3198,7 @@ function renderAdminHome(c){
     </div>
 
     <div class="card" style="margin-bottom:18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-        <div class="section-title" style="margin-bottom:0;">🎒 Усі учні школи</div>
-        <button class="btn btn-accent btn-sm" id="quickAddStudentBtn">➕ Додати учня</button>
-      </div>
+      <div class="section-title" style="margin-bottom:0;">🎒 Усі учні школи</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Ім'я</th><th>Клас</th><th>Вчитель</th><th>Тариф</th><th>Пройдено / Залишилось</th><th></th></tr></thead>
         <tbody>
@@ -3063,76 +3232,54 @@ function renderAdminHome(c){
         </tbody>
       </table></div>
     </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="section-title" style="margin-bottom:4px;">💾 Резервна копія (база + файли)</div>
+          <p class="muted">Railway не робить автоматичні бекапи на поточному тарифі. Рекомендуємо завантажувати копію раз на тиждень і зберігати окремо (на комп'ютері, Google Drive тощо). Архів містить базу даних і всі завантажені файли (чеки, матеріали, домашка).</p>
+        </div>
+        <button class="btn btn-outline" id="downloadBackupBtn">📥 Завантажити архів</button>
+      </div>
+    </div>
   `;
   $('#goStudentsCard').onclick = ()=>{ STATE.currentPage='admin_students'; renderApp(); };
   $('#goTeachersCard').onclick = ()=>{ STATE.currentPage='admin_teachers'; renderApp(); };
   $('#goScheduleCard').onclick = ()=>{ STATE.currentPage='admin_schedule'; renderApp(); };
   $('#goRevenueCard').onclick = ()=>{ STATE.currentPage='admin_payments'; renderApp(); };
-  $('#quickAddStudentBtn').onclick = (e)=>{ e.stopPropagation(); openAdminAddStudentModal(); };
+  $('#downloadBackupBtn').onclick = downloadDatabaseBackup;
 }
 
-/* ---- Адмін: керування учнями (додавання/видалення/перегляд кабінету) ---- */
-function openAdminAddStudentModal(){
-  const teachers = DB.users.filter(u=>u.role==='teacher');
-  openModal(`
-    <div class="modal-box">
-      <div class="modal-head"><h3>➕ Додати учня</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-      <div class="modal-body">
-        <div class="field"><label>Повне ім'я учня</label><input id="newStName" placeholder="Ім'я Прізвище"></div>
-        <div class="field"><label>Email (для входу учня)</label><input id="newStEmail" type="email" placeholder="student@email.com"></div>
-        <div class="field-row">
-          <div class="field"><label>Клас</label>
-            <select id="newStGrade"><option value="1">1 клас</option><option value="2">2 клас</option><option value="3">3 клас</option><option value="4">4 клас</option></select>
-          </div>
-          <div class="field"><label>Вчитель</label>
-            <select id="newStTeacher"><option value="">— не призначено —</option>${teachers.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-block" id="createStudentBtn">Додати учня до школи</button>
-      </div>
-    </div>
-  `);
-  $('#createStudentBtn').onclick = async ()=>{
-    const name = $('#newStName').value.trim();
-    const email = $('#newStEmail').value.trim().toLowerCase();
-    const grade = parseInt($('#newStGrade').value);
-    const teacherId = $('#newStTeacher').value || null;
-    if(!name){ toast('Введіть ім\'я учня', 'error'); return; }
-    if(!email){ toast('Вкажіть email — за ним учень входитиме в систему', 'error'); return; }
-
-    const btn = $('#createStudentBtn'); btn.disabled = true;
-    try {
-      if(API_MODE){
-        const result = await API.adminCreate({ email, name, role:'student', teacherId, grade });
-        DB.users.push(result.user);
-        closeModal();
-        openModal(`
-          <div class="modal-box" style="max-width:420px;">
-            <div class="modal-head"><h3>✅ Учня додано</h3><div class="modal-close" onclick="closeModal()">✕</div></div>
-            <div class="modal-body" style="text-align:center;">
-              <p class="muted" style="margin-bottom:14px;">Передайте ці дані учню для входу:</p>
-              <div class="card" style="box-shadow:none;border:1px solid var(--border);padding:16px;">
-                <p><b>Email:</b> ${esc(email)}</p>
-                <p><b>Тимчасовий пароль:</b> ${esc(result.tempPassword)}</p>
-              </div>
-              <p class="hint" style="margin-top:10px;">Пароль можна змінити пізніше через «Скинути пароль».</p>
-            </div>
-          </div>
-        `);
-      } else {
-        const id = uid();
-        DB.users.push({id, role:'student', name, email, password:'111111', grade, parentId:null, teacherId, balance:0, trialUsed:false, plan:null, emailVerified:true, addedByAdmin:true});
-        toast('Учня додано до школи', 'success');
-        closeModal();
-      }
-      renderPageContent(STATE.currentPage);
-    } catch(e){
-      toast(e.message || 'Не вдалося додати учня', 'error');
-      btn.disabled = false;
+async function downloadDatabaseBackup(){
+  const btn = $('#downloadBackupBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Готуємо архів... (може зайняти хвилину)'; }
+  try {
+    const token = TokenStore.get();
+    const resp = await fetch(API_URL + '/backup/full', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({error:'Помилка завантаження'}));
+      throw new Error(err.error || 'Помилка завантаження');
     }
-  };
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0,10);
+    a.download = `matemax-backup-${stamp}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Резервну копію завантажено ✅', 'success');
+  } catch(e){
+    toast(e.message || 'Не вдалося завантажити копію', 'error');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '📥 Завантажити архів'; }
+  }
 }
 
+/* ---- Адмін: керування учнями (видалення/перегляд кабінету) ---- */
 async function deleteStudent(studentId){
   const s = getUserById(studentId);
   if(!s) return;
@@ -3253,9 +3400,6 @@ function renderAdminStudents(c){
     return;
   }
   c.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn btn-accent btn-sm" id="addStudentBtn2">➕ Додати учня</button>
-    </div>
     <div class="card">
       <div class="section-title">🎒 Усі учні (${students.length})</div>
       <div class="table-wrap"><table>
@@ -3287,7 +3431,6 @@ function renderAdminStudents(c){
       </table></div>
     </div>
   `;
-  $('#addStudentBtn2').onclick = openAdminAddStudentModal;
 }
 
 function openAssignTeacherModal(studentId){
