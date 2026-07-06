@@ -4,6 +4,19 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const { auth, adminOnly } = require('../middleware/auth');
+const { getDB } = require('../db');
+
+// SQLite працює в режимі WAL (для швидкодії) — реальні дані певний час можуть
+// лежати в окремому службовому файлі (-wal), а не в самому matemax.db. Перед
+// будь-яким бекапом ОБОВ'ЯЗКОВО робимо checkpoint, інакше скопійований файл
+// може виявитись порожнім або застарілим.
+function forceCheckpoint() {
+  try {
+    getDB().pragma('wal_checkpoint(TRUNCATE)');
+  } catch (e) {
+    console.error('Checkpoint error:', e.message);
+  }
+}
 
 // ── GET /api/backup/full ────────────────────────────────────────
 // Тільки адмін може завантажити повний бекап: файл бази даних (matemax.db)
@@ -11,6 +24,8 @@ const { auth, adminOnly } = require('../middleware/auth');
 // Безкоштовна альтернатива автоматичним бекапам Railway (тільки на Pro).
 router.get('/full', auth, adminOnly, (req, res) => {
   try {
+    forceCheckpoint();
+
     const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'matemax.db');
     const uploadsPath = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
 
@@ -44,6 +59,8 @@ router.get('/full', auth, adminOnly, (req, res) => {
 // Тільки файл бази даних, без завантажених файлів (швидший, менший)
 router.get('/database', auth, adminOnly, (req, res) => {
   try {
+    forceCheckpoint();
+
     const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'matemax.db');
     if (!fs.existsSync(dbPath)) {
       return res.status(404).json({ error: 'Файл бази даних не знайдено' });
